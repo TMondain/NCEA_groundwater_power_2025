@@ -1,4 +1,3 @@
-
 ########################################################################
 # Libraries
 ########################################################################
@@ -16,23 +15,92 @@ library(truncdist)
 ########################################################################
 
 
-dat <- read_xlsx("data/raw/water_quality_data_cleaned.xlsx")
-dat$gw0117_value <- as.numeric(dat$gw0117_value)
+# dataset <- read_xlsx("data/raw/water_quality_data_cleaned.xlsx")
+
+# write.csv(dataset, "data/raw/water_quality_data_cleaned.csv")
+
+dataset <- read.csv("data/raw/water_quality_data_cleaned.csv")
 
 scenarios <- read.csv("data/scenarios/N_scenarios.csv")
 
-
-# # to store results
-# fpower0 <- fpower_LR0 <- fpower_LR0_anova <-rep(NA,length(scenarios[,1]))
+colnames(scenarios) <- c("X", "nosite.yr", "noyear", "effect.size", "days", "samfreq", "prox"  )
 
 # number of simulations
 nsim = 100
 
 # response variable
-response_var = "gw0117_value"
+response_var = grep("_value", colnames(dataset), value = TRUE)
 
 
-## create pars data frame
+
+# create pars dataframe
+pars <- data.frame(response_var = rep(response_var, each = nrow(scenarios)),
+                   nsim = 20,
+                   do.call("rbind", replicate(length(response_var), 
+                                              scenarios, simplify = FALSE))
+)
+
+
+dim(pars)
+
+cols.num <- grep("_value", colnames(dataset), value = TRUE)
+dataset[cols.num] <- sapply(dataset[cols.num],as.numeric)
+
+sapply(dataset[cols.num],function(x) range(x, na.rm = TRUE))
+sapply(dataset[cols.num],function(x) min(x, na.rm = TRUE))
+sapply(dataset[cols.num],function(x) sum(x == 0, na.rm = TRUE))
+
+
+# # to store results
+# fpower0 <- fpower_LR0 <- fpower_LR0_anova <-rep(NA,length(scenarios[,1]))
+
+rwind <- 1508
+
+pwr <- power_analysis(data_location = dataset,
+                      response_var = pars$response_var[rwind], 
+                      nsim = pars$nsim[rwind],
+                      noyear = pars$noyear[rwind], 
+                      nosite.yr = pars$nosite.yr[rwind], 
+                      samfreq = pars$samfreq[rwind], 
+                      effect.size = pars$effect.size[rwind], 
+                      days = pars$days[rwind],
+                      save_loc = NULL)
+
+
+
+cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {
+  for(i in 1:ncol(param_df)) {
+    assign(colnames(param_df)[i], c(param_df[rownums, i]), envir = envir)
+  }
+}
+
+cols2vectors(pars, 1508)
+
+
+
+## submit job
+#SBATCH --job-name="My test job"
+#SBATCH --time=00:01:00
+#SBATCH --mem=1M
+#SBATCH --account=mygws
+#SBATCH --partition=debug
+#SBATCH --qos=debug
+
+# submit
+sjob <- slurm_apply(power_analysis, 
+                    pars, 
+                    jobname = "ncea_pwr",
+                    nodes = nrow(pwr),
+                    cpus_per_node = 1, 
+                    submit = TRUE,
+                    slurm_options = list(account = "ceh_generic",
+                                         partition = "standard",
+                                         qos = "short",
+                                         time = "3:59:59",
+                                         mem = "10000",
+                                         output = "pwr_%a.out",
+                                         error = "pwr_%a.err"),
+                    sh_template = "jasmin_submit_sh.txt")
 
 
 
@@ -43,28 +111,42 @@ response_var = "gw0117_value"
 # for (ss in 1:12)
 # should it be scenarios_location or the scenario? Probably should feed each one separately.
 
-power_analysis <- function(data_location, scenarios_location, response_var, nsim){
+power_analysis <- function(data_location, response_var, nsim,
+                           noyear, nosite.yr, samfreq, effect.size, days,
+                           save_loc = NULL){
   
   ## read in data and ensure is numeric!!!
+  if(is.character(data_location)) {
+    dat <- read.csv(data_location)
+  } else {
+    dat <- data_location
+  }
   
-  print(ss)
+  cols.num <- grep("_value", colnames(dat), value = TRUE)
+  dat[cols.num] <- sapply(dat[cols.num],as.numeric)
   
   # create formula
   f <- formula(paste0(response_var, "~1+(1|year)+(1|sampling_point)"))
   
   # run the model
+  message("! Running initial model")
+  
+  # remove NAs and 0s
+  dat <- na.omit(dat[,c("year", "sampling_point", response_var)])
+  dat <- dat[dat[, response_var] > 0,]
+  
   modparam <- glmmTMB(f,data=dat,family=Gamma(link = "log"))
   
-  #number of years
-  noyear <- scenarios$noyear[ss]
+  # #number of years
+  # noyear <- scenarios$noyear[ss]
   
-  #number of sites per year
-  nosite.yr <- scenarios$nosite[ss] 
+  # #number of sites per year
+  # nosite.yr <- scenarios$nosite[ss] 
   
-  #frequency of sampling the same unit across years
-  samfreq <- scenarios$freq[ss]
+  # #frequency of sampling the same unit across years
+  # samfreq <- scenarios$freq[ss]
   
-  effect.size <- scenarios$eff[ss]
+  # effect.size <- scenarios$eff[ss]
   
   ########################################################################
   # Starting simulations for this scenario
@@ -80,8 +162,13 @@ power_analysis <- function(data_location, scenarios_location, response_var, nsim
   tslope <- effect.size
   #tslope <- -(effect.size)#positive
   
+  message("! Starting simulations")
+  
   #loop over simulations
   for (ii in 1:nsim){
+    
+    if(ii %% 10 == 0)
+      cat(paste0("iteration: ", ii, "\n"))
     
     ########################################################################
     # Data structure 
@@ -108,8 +195,9 @@ power_analysis <- function(data_location, scenarios_location, response_var, nsim
       year <- data0$year[zz]
       site_yr <- data0$site.yr[zz]
       
-      #the number of days for this site-year
-      days <- scenarios$days[ss]
+      # #the number of days for this site-year
+      # days <- scenarios$days[ss]
+      
       #unique days from the available days in a year
       unique_days <- 1:days
       
@@ -211,9 +299,21 @@ power_analysis <- function(data_location, scenarios_location, response_var, nsim
     # rm(mod_comp0)
     
   }
-  #estimated power using p-values
-  fpower0[ss] <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(pval0))
   
+  
+  message("! finished simulations")
+  
+  #estimated power using p-values
+  fpower0 <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(pval0))
+  
+  outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
+                     days, samfreq, fpower0)
+  
+  # if(!is.null(save_loc)){
+  #   
+  # }
+  
+  return(outs)
   
 }
 
