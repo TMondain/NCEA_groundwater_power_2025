@@ -22,23 +22,38 @@ dat$gw0117_value <- as.numeric(dat$gw0117_value)
 scenarios <- read.csv("data/scenarios/N_scenarios.csv")
 
 
-# to store results
-fpower0 <- fpower_LR0 <- fpower_LR0_anova <-rep(NA,length(scenarios[,1]))
+# # to store results
+# fpower0 <- fpower_LR0 <- fpower_LR0_anova <-rep(NA,length(scenarios[,1]))
 
 # number of simulations
-nsim
+nsim = 100
 
-# run the model
-modparam <- glmmTMB(gw0117_value~1+(1|year)+(1|sampling_point),data=dat,family=Gamma(link = "log"))
+# response variable
+response_var = "gw0117_value"
+
+
+## create pars data frame
+
 
 
 ########################################################################
 #loop over the number of scenarios
 ########################################################################
 #for (ss in 1:length(scenarios[,1])){
-for (ss in 1:12){
+# for (ss in 1:12)
+# should it be scenarios_location or the scenario? Probably should feed each one separately.
+
+power_analysis <- function(data_location, scenarios_location, response_var, nsim){
+  
+  ## read in data and ensure is numeric!!!
   
   print(ss)
+  
+  # create formula
+  f <- formula(paste0(response_var, "~1+(1|year)+(1|sampling_point)"))
+  
+  # run the model
+  modparam <- glmmTMB(f,data=dat,family=Gamma(link = "log"))
   
   #number of years
   noyear <- scenarios$noyear[ss]
@@ -54,8 +69,6 @@ for (ss in 1:12){
   ########################################################################
   # Starting simulations for this scenario
   ########################################################################
-  nsim = nsim # select a number of simulations
-  
   #results will be stored here
   pval0 <- LR0 <- LR0_anova <-sign.ts <- rep(NA,nsim)
   #results will be stored here
@@ -204,7 +217,6 @@ for (ss in 1:12){
   
 }
 
-save.image("C://RTemp//GWDTE_power_N.RData")
 
 
 
