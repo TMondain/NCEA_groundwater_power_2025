@@ -12,18 +12,16 @@ library(gdata)
 library(truncnorm)
 library(ggplot2)
 library(truncdist)
+library(rslurm)
 ########################################################################
 # Reading inputs
 ########################################################################
 
+source("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/scripts/functions/power_analysis.R")
 
-# dataset <- read_xlsx("data/raw/water_quality_data_cleaned.xlsx")
+dataset <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned.csv")
 
-# write.csv(dataset, "data/raw/water_quality_data_cleaned.csv")
-
-dataset <- read.csv("data/raw/water_quality_data_cleaned.csv")
-
-scenarios <- read.csv("data/scenarios/N_scenarios.csv")
+scenarios <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/scenarios/N_scenarios.csv")
 
 colnames(scenarios) <- c("X", "nosite.yr", "noyear", "effect.size", "days", "samfreq", "prox"  )
 
@@ -33,14 +31,17 @@ nsim = 100
 # response variable
 response_var = grep("_value", colnames(dataset), value = TRUE)
 
-
-
 # create pars dataframe
-pars <- data.frame(response_var = rep(response_var, each = nrow(scenarios)),
+pars <- data.frame(data_location = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned.csv",
+                   response_var = rep(response_var, each = nrow(scenarios)),
                    nsim = 20,
                    do.call("rbind", replicate(length(response_var), 
                                               scenarios, simplify = FALSE))
 )
+
+pars$save_loc <- "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/"
+pars$X <- NULL
+pars$prox <- NULL
 
 
 dim(pars)
@@ -92,7 +93,7 @@ cols2vectors(pars, 1508)
 sjob <- slurm_apply(power_analysis, 
                     pars, 
                     jobname = "ncea_pwr",
-                    nodes = nrow(pwr),
+                    nodes = nrow(pars),
                     cpus_per_node = 1, 
                     submit = TRUE,
                     slurm_options = list(account = "ceh_generic",

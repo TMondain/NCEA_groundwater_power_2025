@@ -215,9 +215,15 @@ power_analysis <- function(data_location, response_var, nsim,
   outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
                      days, samfreq, fpower0)
   
-  # if(!is.null(save_loc)){
-  #   
-  # }
+  if(!is.null(save_loc)){
+    
+    dir.create(save_loc, recursive = TRUE)
+    write.csv(outs, 
+              file = paste0(save_loc, "/", 
+                           paste(response_var, nsim, nosite.yr, noyear, effect.size, 
+                                 days, samfreq, collapse = "_"), ".csv"))
+    
+  }
   
   return(outs)
   
