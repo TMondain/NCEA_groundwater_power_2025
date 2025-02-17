@@ -8,6 +8,7 @@
 
 power_analysis <- function(data_location, response_var, nsim,
                            noyear, nosite.yr, samfreq, effect.size, days,
+                           sample_column = NULL,
                            save_loc = NULL){
   
   
@@ -27,6 +28,10 @@ power_analysis <- function(data_location, response_var, nsim,
   } else {
     dat <- data_location
   }
+  
+  if(!is.null(sample_column))
+    dat <- dat[dat[,sample_column] == 1,]
+    
   
   cols.num <- grep("_value", colnames(dat), value = TRUE)
   dat[cols.num] <- sapply(dat[cols.num],as.numeric)

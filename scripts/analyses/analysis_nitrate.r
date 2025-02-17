@@ -26,7 +26,7 @@ scenarios <- read.csv("data/scenarios/N_scenarios.csv")
 fpower0 <- fpower_LR0 <- fpower_LR0_anova <-rep(NA,length(scenarios[,1]))
 
 # number of simulations
-nsim
+nsim = 20
 
 # run the model
 modparam <- glmmTMB(gw0117_value~1+(1|year)+(1|sampling_point),data=dat,family=Gamma(link = "log"))
