@@ -34,7 +34,7 @@ response_var = grep("_value", colnames(dataset), value = TRUE)
 # create pars dataframe
 pars <- data.frame(data_location = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned.csv",
                    response_var = rep(response_var, each = nrow(scenarios)),
-                   nsim = 20,
+                   nsim = 100,
                    do.call("rbind", replicate(length(response_var), 
                                               scenarios, simplify = FALSE))
 )
@@ -43,8 +43,32 @@ pars$save_loc <- "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/s
 pars$X <- NULL
 pars$prox <- NULL
 
-
 dim(pars)
+
+
+# submit
+sjob <- slurm_apply(power_analysis, 
+                    pars, 
+                    jobname = "ncea_pwr",
+                    nodes = nrow(pars),
+                    cpus_per_node = 1, 
+                    submit = TRUE,
+                    slurm_options = list(account = "ceh_generic",
+                                         partition = "standard",
+                                         qos = "short",
+                                         time = "3:59:59",
+                                         mem = "10000",
+                                         output = "pwr_%a.out",
+                                         error = "pwr_%a.err"),
+                    sh_template = "jasmin_submit_sh.txt")
+
+
+
+
+
+
+
+
 
 cols.num <- grep("_value", colnames(dataset), value = TRUE)
 dataset[cols.num] <- sapply(dataset[cols.num],as.numeric)
@@ -88,21 +112,3 @@ cols2vectors(pars, 1508)
 #SBATCH --account=mygws
 #SBATCH --partition=debug
 #SBATCH --qos=debug
-
-# submit
-sjob <- slurm_apply(power_analysis, 
-                    pars, 
-                    jobname = "ncea_pwr",
-                    nodes = nrow(pars),
-                    cpus_per_node = 1, 
-                    submit = TRUE,
-                    slurm_options = list(account = "ceh_generic",
-                                         partition = "standard",
-                                         qos = "short",
-                                         time = "3:59:59",
-                                         mem = "10000",
-                                         output = "pwr_%a.out",
-                                         error = "pwr_%a.err"),
-                    sh_template = "jasmin_submit_sh.txt")
-
-
