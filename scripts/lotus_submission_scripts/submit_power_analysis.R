@@ -13,6 +13,7 @@ library(truncnorm)
 library(ggplot2)
 library(truncdist)
 library(rslurm)
+library(tidyverse)
 ########################################################################
 # Reading inputs
 ########################################################################
@@ -23,7 +24,7 @@ dataset <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/dat
 
 scenarios <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/scenarios/N_scenarios.csv")
 
-colnames(scenarios) <- c("X", "nosite.yr", "noyear", "effect.size", "days", "samfreq", "prox"  )
+colnames(scenarios) <- c("X", "nosite.yr", "noyear", "effect.size", "days", "samfreq", "prox")
 
 # number of simulations
 nsim = 100
@@ -35,7 +36,7 @@ sample_column = "ps_samp"
 response_var = grep("_value", colnames(dataset), value = TRUE)
 
 # create pars dataframe
-pars <- data.frame(data_location = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned.csv",
+pars <- data.frame(data_location = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned_IndSampOptions.csv",
                    response_var = rep(response_var, each = nrow(scenarios)),
                    nsim = nsim,
                    sample_column = sample_column,
@@ -44,11 +45,32 @@ pars <- data.frame(data_location = "/gws/nopw/j04/ceh_generic/thoval/ncea/ground
 )
 
 pars$save_loc <- "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/"
+
+
+dim(pars)
+
+
+## resubmit failed outputs
+{
+  pars <- pars %>% 
+    mutate(id_col = paste(response_var, nsim, nosite.yr, noyear, effect.size, days, samfreq, sep = "_"))
+  
+  # read the combined file
+  outputs <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/outputs/power_datasets/combined_power_outputs.csv")
+  
+  # check which scenarios failed
+  outputs <- outputs %>% 
+    mutate(id_col = paste(response_var, nsim, nosite.yr, noyear, effect.size, days, samfreq, sep = "_"))
+  
+  pars <- pars[which(!pars$id_col %in% outputs$id_col),]
+  unique(pars$response_var)
+}
+
+pars$id_col <- NULL
 pars$X <- NULL
 pars$prox <- NULL
 
 dim(pars)
-
 
 # submit
 sjob <- slurm_apply(power_analysis, 
@@ -59,8 +81,8 @@ sjob <- slurm_apply(power_analysis,
                     submit = TRUE,
                     slurm_options = list(account = "ceh_generic",
                                          partition = "standard",
-                                         qos = "short",
-                                         time = "3:59:59",
+                                         qos = "standard",
+                                         time = "23:59:59",
                                          mem = "10000",
                                          output = "pwr_%a.out",
                                          error = "pwr_%a.err"),
@@ -70,6 +92,30 @@ sjob <- slurm_apply(power_analysis,
 
 
 
+
+### testing
+
+rwind = 1090
+
+pwr <- power_analysis(data_location = pars$data_location[rwind],
+                      response_var = pars$response_var[rwind],
+                      nsim = pars$nsim[rwind],
+                      noyear = pars$noyear[rwind],
+                      nosite.yr = pars$nosite.yr[rwind],
+                      samfreq = pars$samfreq[rwind],
+                      effect.size = pars$effect.size[rwind],
+                      days = pars$days[rwind],
+                      save_loc = NULL)
+
+
+
+cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {
+  for(i in 1:ncol(param_df)) {
+    assign(colnames(param_df)[i], c(param_df[rownums, i]), envir = envir)
+  }
+}
+
+cols2vectors(pars, rwind)
 
 
 
