@@ -5,54 +5,13 @@ library(tidyverse)
 
 # read files
 dip <- read.csv("data/raw/combined_dip_data.csv")
-telem <- read.csv("data/raw/combined_site_data.csv")
+site <- read.csv("data/raw/combined_site_data.csv")
 
 head(dip)
-head(telem)
+head(site)
 
 
-#### Step 1: calculate mean, 5th and 95th centile ---------------------------------------------
-
-## dip data
-hist(dip$water_level)
-
-# remove negative values?
-# dip <- dip[dip$water_level >= 0,]
-head(dip)
-
-dip_quantsum <- dip %>% 
-  mutate(sampling_point = station_number) %>% 
-  dplyr::group_by(sampling_point, easting, northing, year) %>% 
-  dplyr::summarise(median_value = mean(water_level, na.rm = TRUE),
-                   cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
-                   cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE))
-
-
-## telem data
-hist(telem$water_level)
-
-# remove negative values?
-# telem <- telem[telem$water_level >= 0,]
-head(telem)
-
-telem_quantsum <- telem %>% 
-  mutate(sampling_point = station_number) %>% 
-  dplyr::group_by(sampling_point, easting, northing, year) %>% 
-  dplyr::summarise(mean_value = mean(water_level, na.rm = TRUE),
-                   cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
-                   cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE))
-
-
-## save
-dir.create("data/processed")
-
-write.csv(dip_quantsum, 
-          "data/processed/dip_data_quantile_summary.csv")
-
-write.csv(telem_quantsum, 
-          "data/processed/telem_data_quantile_summary.csv")
-
-#### Step 2: %chg relative to 5yr baseline by site -----------------------------
+#### Step 1: Calculate %chg relative to 5yr baseline by site -----------------------------
 
 ## dip
 # check how many years per site?
@@ -110,40 +69,105 @@ hist(dip$perc_chg_ind)
 hist(dip$perc_chg_ind[dip$perc_chg_ind<500])
 
 
-## telem
+## site
 # check how many years per site?
-telem %>% 
+site %>% 
   group_by(station_number) %>% 
   summarise(length(unique(year)))
 ## not the same number of years at each site
 ## decision: make the baseline the first 5 yrs worth of data at that site?
 
 ## use this to extract the data for the first 5 years for each station
-first5_telem <- firstn_groups(dataset = telem,
-                             group_col = "station_number",
-                             sort_col = "year",
-                             nrows_to_keep = 5, 
-                             sort_decreasing = FALSE)
+first5_site <- firstn_groups(dataset = site,
+                              group_col = "station_number",
+                              sort_col = "year",
+                              nrows_to_keep = 5, 
+                              sort_decreasing = FALSE)
 
 # get median of the first 5 years for each station
-median_5telem <- tapply(first5_telem$water_level, first5_telem$station_number, median)
+median_5site <- tapply(first5_site$water_level, first5_site$station_number, median)
 
-telem$baseline5yr <- median_5telem[match(telem$station_number, names(median_5telem))]
+site$baseline5yr <- median_5site[match(site$station_number, names(median_5site))]
 
 # calculate % of 5yr base
-telem <- telem %>% 
+site <- site %>% 
   mutate(sampling_point = station_number,
          perc_chg_ind = water_level/baseline5yr*100)
 
-head(telem)
-hist(telem$perc_chg)
-hist(telem$perc_chg[telem$perc_chg<500])
+head(site)
+hist(site$perc_chg)
+hist(site$perc_chg[site$perc_chg<500])
+
+
+#### Step 2: calculate mean, 5th and 95th centile ---------------------------------------------
+
+## dip data
+hist(dip$water_level)
+
+# remove negative values?
+# dip <- dip[dip$water_level >= 0,]
+head(dip)
+
+dip_quantsum <- dip %>% 
+  mutate(sampling_point = station_number) %>% 
+  dplyr::group_by(sampling_point, easting, northing, year) %>% 
+  dplyr::summarise(mean_value = mean(water_level, na.rm = TRUE),
+                   cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
+                   cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE),
+                   percchg = mean(perc_chg_ind, na.rm = TRUE))
+
+
+## site data
+hist(site$water_level)
+
+# remove negative values?
+# site <- site[site$water_level >= 0,]
+head(site)
+
+site_quantsum <- site %>% 
+  mutate(sampling_point = station_number) %>% 
+  dplyr::group_by(sampling_point, easting, northing, year) %>% 
+  dplyr::summarise(mean_value = mean(water_level, na.rm = TRUE),
+                   cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
+                   cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE),
+                   percchg = mean(perc_chg_ind, na.rm = TRUE))
+
+
+## save
+dir.create("data/processed")
+
+write.csv(dip_quantsum, 
+          "data/processed/dip_data_quantile_summary.csv")
+
+write.csv(site_quantsum, 
+          "data/processed/site_data_quantile_summary.csv")
 
 
 ## save
 write.csv(dip,
           "data/processed/dip_data_5yr_perc_change.csv")
 
-write.csv(telem,
-          "data/processed/telem_data_5yr_perc_change.csv")
+write.csv(site,
+          "data/processed/site_data_5yr_perc_change.csv")
+
+## save unique site/year combinations
+sityr_dip <- dip %>% 
+  dplyr::select(sampling_point, station_name, station_number, year) %>% 
+  distinct()
+
+sityr_site <- site %>% 
+  dplyr::select(sampling_point, station_name, station_number, year) %>% 
+  distinct()
+
+write.csv(sityr_dip,
+          "data/processed/unique_dip_sites_years.csv")
+
+write.csv(sityr_site,
+          "data/processed/unique_nondip_sites_years.csv")
+
+
+  
+  
+  
+  
 
