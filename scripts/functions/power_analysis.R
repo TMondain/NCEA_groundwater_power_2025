@@ -63,7 +63,7 @@ power_analysis <- function(data_location, response_var, nsim,
   # Starting simulations for this scenario
   ########################################################################
   #results will be stored here
-  pval0 <- LR0 <- LR0_anova <-sign.ts <- rep(NA,nsim)
+  pval0 <- LR0 <- LR0_anova <- sign.ts <- rep(NA,nsim)
   #results will be stored here
   
   #effect.size 
