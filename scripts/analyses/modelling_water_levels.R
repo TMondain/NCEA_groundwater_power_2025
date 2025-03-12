@@ -30,6 +30,9 @@ response_var = "water_level"
 
 effect.size = 0.01
 
+nsim = 100
+
+
 
 #### sample --------------------------------------------------------------------
 
@@ -41,8 +44,7 @@ telemsamp <- telem[telem[,sample_column_name] == 1,]
 
 
 
-#### model ---------------------------------------------------------------------
-#### make this into a function?
+#### initial model -------------------------------------------------------------
 get_model_pars <- function(dat, # the dataset
                            response, # response variable
                            model_covs) { # the model covariates
@@ -71,11 +73,14 @@ get_model_pars <- function(dat, # the dataset
   modpars <- do.call(c, mod_paramvals)
   names(modpars) <- NULL
   
+  # get sigma^2
+  sigma2 <- summary(mod)$sigma^2
+  
   # join the intercept and the modelpars together
-  modpars <- c(intval, intsd, modpars)
+  modpars <- c(intval, intsd, modpars, sigma2)
   
   # add the names
-  names(modpars) <- c("intval", "intsd", model_covs)
+  names(modpars) <- c("intval", "intsd", model_covs, "sigma2")
   
   return(modpars)
   
@@ -84,37 +89,6 @@ get_model_pars <- function(dat, # the dataset
 # run the function
 model_para_vals <- lapply(list(dipsamp, telemsamp), function(x)
   get_model_pars(dat = x, response = response_var, model_covs = model_pars))
-
-# # create formula
-# f <- formula(paste0(response_var, "~1+", paste("(1|",model_pars,")", collapse = "+", sep = "")))
-# 
-# # run the model
-# message("! Running initial model")
-# 
-# # remove NAs and 0s
-# dat <- na.omit(dat[,c(model_pars, response_var)])
-# dat <- dat[dat[, response_var] > 0,]
-# head(dat)
-# 
-# modparam <- glmmTMB(f,data=dat,family=Gamma(link = "log"))
-# 
-# # extract model parameters
-# ## intercept mean and standard error
-# intval = data.frame(summary(modparam)$coefficients$cond)$Estimate #0.878
-# intsd = data.frame(summary(modparam)$coefficients$cond)$Std..Error #0.026
-# 
-# # extract model standard deviation for the covariates
-# mod_paramvals <- lapply(model_pars, function(x) 
-#   attr(summary(modparam)$varcor$cond[[x]], "stddev", exact = TRUE))
-# 
-# data.frame(intval, intsd)
-# 
-# data.frame(model_pars, do.call(rbind, mod_paramvals))
-# 
-# # check that it works - all match
-# mthsd = attr(summary(modparam)$varcor$cond$month, "stddev", exact = TRUE)
-# stsd = attr(summary(modparam)$varcor$cond$sampling_point, "stddev", exact = TRUE) #1.58
-# yrsd = attr(summary(modparam)$varcor$cond$year, "stddev", exact = TRUE) #0.031
 
 
 
@@ -138,9 +112,9 @@ create_sim_df <- function(samfreq = 1, nosite.yr, noyear, days) {
   expanded_data <- data.frame()
   #loop over each site-year combination
   for (zz in 1:nrow(data0)) {
-    site <- dat$site[zz]
-    year <- dat$year[zz]
-    site_yr <- dat$site.yr[zz]
+    site <- data0$site[zz]
+    year <- data0$year[zz]
+    site_yr <- data0$site.yr[zz]
     
     # #the number of days for this site-year
     # days <- scenarios$days[ss]
@@ -168,8 +142,12 @@ create_sim_df <- function(samfreq = 1, nosite.yr, noyear, days) {
 
 expanded_data <- create_sim_df(samfreq = 1, nosite.yr = 100, noyear = 5, days = 12)
 
-# add month
-expanded_data$month <- expanded_data$day 
+if("month" %in% model_pars)
+  # add month
+  expanded_data$month <- expanded_data$day 
+
+if("sampling_point" %in% model_pars)
+  expanded_data$sampling_point <- expanded_data$site
 
 # View the first few rows of the expanded data
 head(expanded_data)
@@ -190,6 +168,7 @@ template_dat = expanded_data
 model_params = model_para_vals[[1]]
 nsim = nsim 
 nosite = 100
+model_pars = model_pars
 
 #### function starts here
 simulate_power <- function(template_dat){}
@@ -233,39 +212,71 @@ for (ii in 1:nsim){
                     mean=model_params["intval"], 
                     sd=model_params["intsd"])
   
-  ## go through each of the model_pars and add variation to the intercept
-  for(i in 1:length(model_pars)) {
-    n_samples <- length(unique(template_dat[,model_pars[i]]))
-    sim.int <- sim.int + 
-      rnorm(nosite, 
+  # ## go through each of the model_pars and add variation to the intercept
+  # for(i in 1:length(model_pars)) {
+  #   n_samples <- length(unique(template_dat[,model_pars[i]]))
+  #   sim.int <- sim.int + 
+  #     rnorm(n_samples, 
+  #           mean=0, 
+  #           sd=model_params[model_pars[i]])
+  #   
+  # }
+  
+  
+  ### add variation to intercept
+  par_variab <- lapply(1:length(model_pars), function(i) {
+    
+    unique_levels <- unique(template_dat[,model_pars[i]])
+    
+    n_samples <- length(unique_levels)
+    
+    int_with_var <- sim.int + 
+      rnorm(n_samples, 
             mean=0, 
             sd=model_params[model_pars[i]])
     
-  }
+    dat_out <- cbind(unique_levels, int_with_var)  
+    colnames(dat_out) <- c(model_pars[i], "int_with_var")
+    
+    dat_out
+    
+  })
   
   
+  variab_expanded <- lapply(par_variab, function(x) {
+    
+       x[,"int_with_var"][match(template_dat[, colnames(x)[1]], x[,1])]
+    
+  })
   
-  #adding site variability
-  int.df <- data.frame(int = sim.int + 
-                         rnorm(nosite, 
-                               mean=0, 
-                               sd=model_params["sampling_point"]), 
-                       site = unique(expanded_data$site))
   
-  template_dat$int <- int.df$int[match(template_dat$site, int.df$site)]
+  # add the list elements together
+  simint_variability <- Reduce("+", variab_expanded)
   
-  #adding monthly variability 
-  month_levels <- unique(days)
+  template_dat$int <- simint_variability
   
-  #adding year variability
-  year_levels <- unique(expanded_data$year) 
-  year_effects <- rnorm(length(year_levels), 
-                        mean = 0, 
-                        sd = yrsd)
   
-  year_df <- data.frame(year = year_levels, year_effect = year_effects)
-  template_dat <- merge(template_dat, year_df, by = "year", all.x = TRUE)
-  template_dat$int <- template_dat$int + expanded_data$year_effect
+  # #adding site variability
+  # int.df <- data.frame(int = sim.int + 
+  #                        rnorm(nosite, 
+  #                              mean=0, 
+  #                              sd=model_params["sampling_point"]), 
+  #                      site = unique(expanded_data$site))
+  # 
+  # template_dat$int <- int.df$int[match(template_dat$site, int.df$site)]
+  # 
+  # #adding monthly variability 
+  # month_levels <- unique(days)
+  # 
+  # #adding year variability
+  # year_levels <- unique(expanded_data$year) 
+  # year_effects <- rnorm(length(year_levels), 
+  #                       mean = 0, 
+  #                       sd = yrsd)
+  # 
+  # year_df <- data.frame(year = year_levels, year_effect = year_effects)
+  # template_dat <- merge(template_dat, year_df, by = "year", all.x = TRUE)
+  # template_dat$int <- template_dat$int + expanded_data$year_effect
   
   
   ########################################################################
@@ -273,21 +284,27 @@ for (ii in 1:nsim){
   ########################################################################
   
   #sigma2
-  g.s2 <- summary(modparam)$sigma^2 #0.121
+  g.s2 <- model_params["sigma2"] #0.121
   
   #expected mean (mu)
-  expanded_data$mu <- exp(expanded_data$int + tslope * expanded_data$year)
+  template_dat$mu <- exp(template_dat$int + tslope * template_dat$year)
   
   #Gamma parameters
   g.shape <- 1/g.s2
-  g.scale <- expanded_data$mu/g.shape
+  g.scale <- template_dat$mu/g.shape
   
   # Simulating values
-  expanded_data$g.values <- sapply(1:nrow(expanded_data), function(i) {
+  template_dat$g.values <- sapply(1:nrow(template_dat), function(i) {
     rtrunc(1, spec = "gamma", a = 1e-6, shape = g.shape, scale = g.scale[i])
   })
   
-  data1 <- expanded_data[,c("g.values","site","year")]
+  data1 <- template_dat[,c("g.values", model_pars)]
+  
+  
+  
+  ## function end here?
+  
+  # new function for power analysis
   
   ########################################################################
   #Power analysis
