@@ -122,7 +122,7 @@ model_para_vals <- lapply(list(dipsamp, telemsamp), function(x)
 # create the template dataframe ------------------------------------------------
 # - this is the same for every simulation 
 
-create_sim_df <- function(samfreq = 1, nosite.yr, noyear) {
+create_sim_df <- function(samfreq = 1, nosite.yr, noyear, days) {
   
   if (noyear >= samfreq) nosite = nosite.yr * samfreq else {
     samfreq <- noyear
@@ -134,34 +134,7 @@ create_sim_df <- function(samfreq = 1, nosite.yr, noyear) {
   data.temp <- expand.grid(site=1:nosite, year=1:noyear)
   data.temp$site.yr <- paste(data.temp$site, data.temp$year, sep="_")
   data0 <- data.temp[is.element(data.temp$site.yr,thin.id),]
-  return(data0)
   
-}
-
-data0 <- create_sim_df(samfreq = 1, nosite.yr = 100, noyear = 5)
-
-
-# if (is.numeric(samfreq)) {
-#   if (noyear >= samfreq) nosite = nosite.yr * samfreq else {
-#     samfreq <- noyear
-#     nosite = nosite.yr * samfreq 
-#   } 
-#   thin.id <- paste(rep(1:nosite,floor(noyear/samfreq)),
-#                    rep(1:noyear,each=floor(nosite/samfreq)),sep="_")
-#   
-#   data.temp <- expand.grid(site=1:nosite, year=1:noyear)
-#   data.temp$site.yr <- paste(data.temp$site, data.temp$year, sep="_")
-#   data0 <- data.temp[is.element(data.temp$site.yr,thin.id),]
-# }
-
-
-
-## create the expanded dataframe
-
-create_expanded <- function(dat, days) {
-  
-  ## can this be done outside the simulations?!?!
-  # need a "clean" one for each simulation, but it doesn't get stored/output.... 
   expanded_data <- data.frame()
   #loop over each site-year combination
   for (zz in 1:nrow(data0)) {
@@ -193,14 +166,16 @@ create_expanded <- function(dat, days) {
   
 }
 
+expanded_data <- create_sim_df(samfreq = 1, nosite.yr = 100, noyear = 5, days = 12)
 
-expanded_data <- create_expanded(dat = data0, days = days)
-
+# add month
+expanded_data$month <- expanded_data$day 
 
 # View the first few rows of the expanded data
 head(expanded_data)
 table(expanded_data[,c("site","year")])
-length(unique(data0$site))
+length(unique(expanded_data$site))
+
 
 
 
@@ -211,9 +186,13 @@ length(unique(data0$site))
 # Starting simulations for this scenario
 ########################################################################
 
+template_dat = expanded_data
+model_params = model_para_vals[[1]]
+nsim = nsim 
+nosite = 100
+
 #### function starts here
-simulate_power <- function(template_dat, 
-                           )
+simulate_power <- function(template_dat){}
 
 #results will be stored here
 pval0 <- LR0 <- LR0_anova <- sign.ts <- rep(NA,nsim)
@@ -226,6 +205,8 @@ pval0 <- LR0 <- LR0_anova <- sign.ts <- rep(NA,nsim)
 tslope <- effect.size
 #tslope <- -(effect.size)#positive
 
+
+
 message("! Starting simulations")
 
 #loop over simulations
@@ -234,58 +215,47 @@ for (ii in 1:nsim){
   if(ii %% 10 == 0)
     cat(paste0("iteration: ", ii, "\n"))
   
-  
-  # ## can this be done outside the simulations?!?!
-  # # need a "clean" one for each simulation, but it doesn't get stored/output.... 
-  # expanded_data <- data.frame()
-  # #loop over each site-year combination
-  # for (zz in 1:nrow(data0)) {
-  #   site <- data0$site[zz]
-  #   year <- data0$year[zz]
-  #   site_yr <- data0$site.yr[zz]
-  #   
-  #   # #the number of days for this site-year
-  #   # days <- scenarios$days[ss]
-  #   
-  #   #unique days from the available days in a year
-  #   unique_days <- 1:days
-  #   
-  #   #loop over each day for the current site-year
-  #   for (day in unique_days) {
-  #     
-  #     #samples collected on the same date (within the same season and year) share a common parameter
-  #     #samples collected during the same season share a common seasonal parameter
-  #     expanded_data <- rbind(expanded_data, 
-  #                            data.frame(site = site,
-  #                                       year = year,
-  #                                       site_yr = site_yr,
-  #                                       day = day,
-  #                                       date=paste(year, day, sep="_")))
-  #   }
-  # }
-  # 
-  # # View the first few rows of the expanded data
-  # head(expanded_data)
-  # table(expanded_data[,c("site","year")])
-  # length(unique(data0$site))
-  
   #number of unique sites (this number depends on sampling frequency 
   #(annual freq. will have the smallest number of unique sites))
-  nosite <- length(unique(expanded_data$site))
+  
+  
+  #### need to alter the proportion - should this be done outside of the function?
+  # or should I add a proportion call to this
+  
   
   ########################################################################
-  # generating parameters
+  # simulating
   ########################################################################
   
-  sim.int <- rtnorm(1, mean=intval, 
-                    sd=intsd)
+  ### need to work out how to incorporate days into the simulation of data
+  # simulate the intercept (mean value)
+  sim.int <- rtnorm(1, 
+                    mean=model_params["intval"], 
+                    sd=model_params["intsd"])
+  
+  ## go through each of the model_pars and add variation to the intercept
+  for(i in 1:length(model_pars)) {
+    n_samples <- length(unique(template_dat[,model_pars[i]]))
+    sim.int <- sim.int + 
+      rnorm(nosite, 
+            mean=0, 
+            sd=model_params[model_pars[i]])
+    
+  }
+  
+  
   
   #adding site variability
-  int.df <- data.frame(int = sim.int + rtnorm(nosite, mean=0, 
-                                              sd=stsd), 
+  int.df <- data.frame(int = sim.int + 
+                         rnorm(nosite, 
+                               mean=0, 
+                               sd=model_params["sampling_point"]), 
                        site = unique(expanded_data$site))
   
-  expanded_data$int <- int.df$int[match(expanded_data$site, int.df$site)]
+  template_dat$int <- int.df$int[match(template_dat$site, int.df$site)]
+  
+  #adding monthly variability 
+  month_levels <- unique(days)
   
   #adding year variability
   year_levels <- unique(expanded_data$year) 
@@ -294,8 +264,8 @@ for (ii in 1:nsim){
                         sd = yrsd)
   
   year_df <- data.frame(year = year_levels, year_effect = year_effects)
-  expanded_data <- merge(expanded_data, year_df, by = "year", all.x = TRUE)
-  expanded_data$int <- expanded_data$int + expanded_data$year_effect
+  template_dat <- merge(template_dat, year_df, by = "year", all.x = TRUE)
+  template_dat$int <- template_dat$int + expanded_data$year_effect
   
   
   ########################################################################
