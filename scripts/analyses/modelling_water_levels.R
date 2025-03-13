@@ -32,6 +32,13 @@ effect.size = 0.01
 
 nsim = 100
 
+samfreq = 1
+
+nosite.yr = 100 # number of sites sampled per year across all datasets
+
+noyear = 5
+
+prop_cont = 0.2
 
 
 #### sample --------------------------------------------------------------------
@@ -42,6 +49,8 @@ dipsamp <- dip[dip[,sample_column_name] == 1,]
 telemsamp <- telem[telem[,sample_column_name] == 1,]
 
 
+# combine into single list?
+dats_list <- list(dipsamp, telemsamp)
 
 
 #### initial model -------------------------------------------------------------
@@ -87,7 +96,7 @@ get_model_pars <- function(dat, # the dataset
 }
 
 # run the function
-model_para_vals <- lapply(list(dipsamp, telemsamp), function(x)
+model_para_vals <- lapply(dats_list, function(x)
   get_model_pars(dat = x, response = response_var, model_covs = model_pars))
 
 
@@ -140,7 +149,10 @@ create_sim_df <- function(samfreq = 1, nosite.yr, noyear, days) {
   
 }
 
-expanded_data <- create_sim_df(samfreq = 1, nosite.yr = 100, noyear = 5, days = 12)
+expanded_data <- create_sim_df(samfreq = samfreq, 
+                               nosite.yr = nosite.yr, 
+                               noyear = noyear, 
+                               days = days)
 
 if("month" %in% model_pars)
   # add month
@@ -156,6 +168,32 @@ length(unique(expanded_data$site))
 
 
 
+#### alter number of sites from each dataset -----------------------------------
+head(expanded_data)
+
+## could write this to work for any number of datasets
+
+if(length(dats_list)>1) {
+  
+  # calculate number of sites to sample
+  nsite_dat2 <- round(nosite.yr*prop_cont)
+  nsite_dat1 <- nosite.yr-nsite_dat2
+  
+  nsites <- c(nsite_dat1, nsite_dat2)
+  
+  expanded_datlist <- lapply(nsites, function(x){
+    
+    smpsits <- sample(unique(expanded_data$sampling_point), size = x)
+    expanded_data[expanded_data$sampling_point %in% smpsits,]
+    
+  })
+}
+
+# I think this worked
+lapply(expanded_datlist, dim)
+
+
+
 
 #### simulation ----------------------------------------------------------------
 
@@ -164,169 +202,201 @@ length(unique(expanded_data$site))
 # Starting simulations for this scenario
 ########################################################################
 
-template_dat = expanded_data
-model_params = model_para_vals[[1]]
-nsim = nsim 
-nosite = 100
-model_pars = model_pars
+# template_dat = expanded_data
+# model_params = model_para_vals[[1]]
+# nsim = nsim
+# nosite = 100
+# model_pars = model_pars
 
 #### function starts here
-simulate_power <- function(template_dat){}
+simulate_data <- function(template_dat,
+                          model_params,
+                          nsim = 100, 
+                          model_pars){
+  
+  
+  #effect.size 
+  #note: here I tested whether there is a difference when simulating positive or negative effect sizes,  
+  #but there is no difference in the results. So, only simulating the negative effect
+  #effect.size is always negative
+  tslope <- effect.size
+  #tslope <- -(effect.size)#positive
+  
+  
+  data_out <- list()
+  message("! Starting simulations")
+  
+  #loop over simulations
+  for (ii in 1:nsim){
+    
+    if(ii %% 10 == 0)
+      cat(paste0("iteration: ", ii, "\n"))
+    
+    #number of unique sites (this number depends on sampling frequency 
+    #(annual freq. will have the smallest number of unique sites))
+    
+    
+    #### need to alter the proportion - should this be done outside of the function?
+    # or should I add a proportion call to this
+    
+    
+    ########################################################################
+    # simulating
+    ########################################################################
+    
+    ### need to work out how to incorporate days into the simulation of data
+    # simulate the intercept (mean value)
+    sim.int <- rtnorm(1, 
+                      mean=model_params["intval"], 
+                      sd=model_params["intsd"])
+    
+    # ## go through each of the model_pars and add variation to the intercept
+    # for(i in 1:length(model_pars)) {
+    #   n_samples <- length(unique(template_dat[,model_pars[i]]))
+    #   sim.int <- sim.int + 
+    #     rnorm(n_samples, 
+    #           mean=0, 
+    #           sd=model_params[model_pars[i]])
+    #   
+    # }
+    
+    
+    ### add variation to intercept
+    par_variab <- lapply(1:length(model_pars), function(i) {
+      
+      unique_levels <- unique(template_dat[,model_pars[i]])
+      
+      n_samples <- length(unique_levels)
+      
+      int_with_var <- sim.int + 
+        rnorm(n_samples, 
+              mean=0, 
+              sd=model_params[model_pars[i]])
+      
+      dat_out <- cbind(unique_levels, int_with_var)  
+      colnames(dat_out) <- c(model_pars[i], "int_with_var")
+      
+      dat_out
+      
+    })
+    
+    
+    variab_expanded <- lapply(par_variab, function(x) {
+      
+      x[,"int_with_var"][match(template_dat[, colnames(x)[1]], x[,1])]
+      
+    })
+    
+    
+    # add the list elements together
+    simint_variability <- Reduce("+", variab_expanded)
+    
+    template_dat$int <- simint_variability
+    
+    
+    # #adding site variability
+    # int.df <- data.frame(int = sim.int + 
+    #                        rnorm(nosite, 
+    #                              mean=0, 
+    #                              sd=model_params["sampling_point"]), 
+    #                      site = unique(expanded_data$site))
+    # 
+    # template_dat$int <- int.df$int[match(template_dat$site, int.df$site)]
+    # 
+    # #adding monthly variability 
+    # month_levels <- unique(days)
+    # 
+    # #adding year variability
+    # year_levels <- unique(expanded_data$year) 
+    # year_effects <- rnorm(length(year_levels), 
+    #                       mean = 0, 
+    #                       sd = yrsd)
+    # 
+    # year_df <- data.frame(year = year_levels, year_effect = year_effects)
+    # template_dat <- merge(template_dat, year_df, by = "year", all.x = TRUE)
+    # template_dat$int <- template_dat$int + expanded_data$year_effect
+    
+    
+    ########################################################################
+    # sim values
+    ########################################################################
+    
+    #sigma2
+    g.s2 <- model_params["sigma2"] #0.121
+    
+    #expected mean (mu)
+    template_dat$mu <- exp(template_dat$int + tslope * template_dat$year)
+    
+    #Gamma parameters
+    g.shape <- 1/g.s2
+    g.scale <- template_dat$mu/g.shape
+    
+    # Simulating values
+    template_dat$g.values <- sapply(1:nrow(template_dat), function(i) {
+      rtrunc(1, spec = "gamma", a = 1e-6, shape = g.shape, scale = g.scale[i])
+    })
+    
+    data_out[[ii]] <- template_dat[,c("g.values", model_pars)]
+    
+  }
+  
+  return(data_out)
+  
+}
 
+simdat_list <- lapply(1:length(model_para_vals), function(i) 
+  simdat <- simulate_data(template_dat = expanded_datlist[[i]],
+                          model_params = model_para_vals[[i]],
+                          nsim = nsim,
+                          model_pars = model_pars)
+)
+
+# new function for power analysis
+
+########################################################################
+#Power analysis
+########################################################################
+
+simulated_data = simdat_list[[1]][[1]]
+
+random_effect = model_pars[3]
+random_effect = "sampling_point"
+
+fixed_effect = model_pars[-which(model_pars %in% random_effect)]
+
+effect.size = effect.size
+
+function(simulated_data, nsim, model_pars, random_effect, fixed_effect, effect.size)
+  
+  #results will be stored here
+  pvalyr0 <- pvalmnth0 <- sign.ts <- rep(NA,nsim)
 #results will be stored here
-pval0 <- LR0 <- LR0_anova <- sign.ts <- rep(NA,nsim)
-#results will be stored here
-
-#effect.size 
-#note: here I tested whether there is a difference when simulating positive or negative effect sizes,  
-#but there is no difference in the results. So, only simulating the negative effect
-#effect.size is always negative
-tslope <- effect.size
-#tslope <- -(effect.size)#positive
-
-
-
-message("! Starting simulations")
-
-#loop over simulations
-for (ii in 1:nsim){
+for(ii in 1:nsim) {
   
-  if(ii %% 10 == 0)
-    cat(paste0("iteration: ", ii, "\n"))
+  simulated_data[,random_effect] <- as.factor(simulated_data[,random_effect])
   
-  #number of unique sites (this number depends on sampling frequency 
-  #(annual freq. will have the smallest number of unique sites))
-  
-  
-  #### need to alter the proportion - should this be done outside of the function?
-  # or should I add a proportion call to this
-  
-  
-  ########################################################################
-  # simulating
-  ########################################################################
-  
-  ### need to work out how to incorporate days into the simulation of data
-  # simulate the intercept (mean value)
-  sim.int <- rtnorm(1, 
-                    mean=model_params["intval"], 
-                    sd=model_params["intsd"])
-  
-  # ## go through each of the model_pars and add variation to the intercept
-  # for(i in 1:length(model_pars)) {
-  #   n_samples <- length(unique(template_dat[,model_pars[i]]))
-  #   sim.int <- sim.int + 
-  #     rnorm(n_samples, 
-  #           mean=0, 
-  #           sd=model_params[model_pars[i]])
-  #   
-  # }
-  
-  
-  ### add variation to intercept
-  par_variab <- lapply(1:length(model_pars), function(i) {
-    
-    unique_levels <- unique(template_dat[,model_pars[i]])
-    
-    n_samples <- length(unique_levels)
-    
-    int_with_var <- sim.int + 
-      rnorm(n_samples, 
-            mean=0, 
-            sd=model_params[model_pars[i]])
-    
-    dat_out <- cbind(unique_levels, int_with_var)  
-    colnames(dat_out) <- c(model_pars[i], "int_with_var")
-    
-    dat_out
-    
-  })
-  
-  
-  variab_expanded <- lapply(par_variab, function(x) {
-    
-       x[,"int_with_var"][match(template_dat[, colnames(x)[1]], x[,1])]
-    
-  })
-  
-  
-  # add the list elements together
-  simint_variability <- Reduce("+", variab_expanded)
-  
-  template_dat$int <- simint_variability
-  
-  
-  # #adding site variability
-  # int.df <- data.frame(int = sim.int + 
-  #                        rnorm(nosite, 
-  #                              mean=0, 
-  #                              sd=model_params["sampling_point"]), 
-  #                      site = unique(expanded_data$site))
-  # 
-  # template_dat$int <- int.df$int[match(template_dat$site, int.df$site)]
-  # 
-  # #adding monthly variability 
-  # month_levels <- unique(days)
-  # 
-  # #adding year variability
-  # year_levels <- unique(expanded_data$year) 
-  # year_effects <- rnorm(length(year_levels), 
-  #                       mean = 0, 
-  #                       sd = yrsd)
-  # 
-  # year_df <- data.frame(year = year_levels, year_effect = year_effects)
-  # template_dat <- merge(template_dat, year_df, by = "year", all.x = TRUE)
-  # template_dat$int <- template_dat$int + expanded_data$year_effect
-  
-  
-  ########################################################################
-  # sim values
-  ########################################################################
-  
-  #sigma2
-  g.s2 <- model_params["sigma2"] #0.121
-  
-  #expected mean (mu)
-  template_dat$mu <- exp(template_dat$int + tslope * template_dat$year)
-  
-  #Gamma parameters
-  g.shape <- 1/g.s2
-  g.scale <- template_dat$mu/g.shape
-  
-  # Simulating values
-  template_dat$g.values <- sapply(1:nrow(template_dat), function(i) {
-    rtrunc(1, spec = "gamma", a = 1e-6, shape = g.shape, scale = g.scale[i])
-  })
-  
-  data1 <- template_dat[,c("g.values", model_pars)]
-  
-  
-  
-  ## function end here?
-  
-  # new function for power analysis
-  
-  ########################################################################
-  #Power analysis
-  ########################################################################
-  data1$site <- as.factor(data1$site)
+  f <- formula(paste0("g.values~", paste(fixed_effect, collapse = "+"), "+(1|", random_effect, ")"))
   #comparing models
-  mod0 <- glmmTMB(g.values~year+(1|site),data=data1,family=Gamma(link = "log"))
+  mod0 <- glmmTMB(f,data=data1,family=Gamma(link = "log"))
   
   #extracting coefficients and their p-values 
   coef.mod0 <- coef(summary(mod0))$cond
-  pval0[ii] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
-  
+  pvalyr0[ii] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
   #checking if the estimated Year effect is in the same direction (positive/negative) 
   #as the simulated one
-  sign.ts[ii] <- sign(tslope)==sign(coef.mod0[rownames(coef.mod0)=="year",
+  sign.ts[ii] <- sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)=="year",
                                               colnames(coef.mod0)=="Estimate"])
   
-  
-  rm(mod0)#to ensure that convergence issues do not result in the same results being repeated
-  # rm(mod_comp0)
+  pvalmnth0[ii] <- coef.mod0[rownames(coef.mod0)=="month",colnames(coef.mod0)=="Pr(>|z|)"]
+  #checking if the estimated Year effect is in the same direction (positive/negative) 
+  #as the simulated one
+  ## I don't think this is necessary for month as we're not interested in detecting
+  ## monthly trends (haven't simulated any), only yearly.
+  sign.ts[ii] <- sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)=="month",
+                                              colnames(coef.mod0)=="Estimate"])
   
 }
+
 
 
 message("! finished simulations")
@@ -336,6 +406,38 @@ fpower0 <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(p
 
 outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
                    days, samfreq, fpower0)
+
+#### I think this will be the end of the function?
+
+
+# data1$site <- as.factor(data1$site)
+# #comparing models
+# mod0 <- glmmTMB(g.values~month+year+(1|sampling_point),data=data1,family=Gamma(link = "log"))
+# 
+# #extracting coefficients and their p-values 
+# coef.mod0 <- coef(summary(mod0))$cond
+# pvalyr0[ii] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
+# pvalmnth0[ii] <- coef.mod0[rownames(coef.mod0)=="month",colnames(coef.mod0)=="Pr(>|z|)"]
+# 
+# #checking if the estimated Year effect is in the same direction (positive/negative) 
+# #as the simulated one
+# sign.ts[ii] <- sign(tslope)==sign(coef.mod0[rownames(coef.mod0)=="year",
+#                                             colnames(coef.mod0)=="Estimate"])
+# 
+# 
+# rm(mod0)#to ensure that convergence issues do not result in the same results being repeated
+# # rm(mod_comp0)
+
+
+
+
+# message("! finished simulations")
+# 
+# #estimated power using p-values
+# fpower0 <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(pval0))
+# 
+# outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
+#                    days, samfreq, fpower0)
 
 
 
