@@ -56,9 +56,15 @@ water_power_analysis <- function(
     prop_cont,
     save_loc) {
   
-  #### sample ------------------------------------------------------------------
+  #### read file
+  if(inherits(dataset_dip, "character"))
+    dataset_dip <- read.csv(dataset_dip)
   
-  ### change this
+  if(inherits(dataset_telem, "character"))
+    dataset_telem <- read.csv(dataset_telem)
+  
+  
+  #### sample ------------------------------------------------------------------
   if(!is.null(sample_column)){
   dipsamp <- dataset_dip[dataset_dip[,sample_column] == 1,]
   
@@ -189,6 +195,8 @@ water_power_analysis <- function(
   
   #### alter number of sites from each dataset -----------------------------------
   head(expanded_data)
+  
+  message("! altering dataset proportions")
   
   ## could write this to work for any number of datasets
   
@@ -361,6 +369,7 @@ water_power_analysis <- function(
     return(data_out)
     
   }
+  
   message("! Starting simulations")
   
   simdat_list <- lapply(1:length(model_para_vals), function(i) 
@@ -474,9 +483,6 @@ water_power_analysis <- function(
     return(fpower0)
     
   }
-  
-  
-  
   
   fixed_effect = model_pars[-which(model_pars %in% random_effect)]
   
