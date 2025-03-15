@@ -18,75 +18,94 @@ library(tidyverse)
 # Reading inputs
 ########################################################################
 
-source("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/scripts/functions/power_analysis.R")
+# example function call
+water_power_analysis(
+  dataset_dip = read.csv("data/processed/dip_data_mn_5yrperc_change.csv"),
+  dataset_telem = read.csv("data/processed/site_data_mn_5yrperc_change.csv"),
+  sample_column = "sampled_20",
+  model_pars = c("month", "year", "sampling_point"),
+  random_effect = c("month", "sampling_point"),
+  days = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
+  response_var = "water_level",
+  effect.size = 0.01,
+  nsim = 100,
+  samfreq = 1,
+  nosite.yr = 100, # number of sites sampled per year across all datasets
+  noyear = 5,
+  prop_cont = 0.2,
+  save_loc = NULL)
 
-dataset <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned_IndSampOptions.csv")
+### below is stuff from the water quality analysis - use as a template
 
-scenarios <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/scenarios/N_scenarios.csv")
-
-colnames(scenarios) <- c("X", "nosite.yr", "noyear", "effect.size", "days", "samfreq", "prox")
-
-# number of simulations
-nsim = 100
-
-# column to do sampling by
-sample_column = "ps_samp"
-
-# response variable
-response_var = grep("_value", colnames(dataset), value = TRUE)
-
-# create pars dataframe
-pars <- data.frame(data_location = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned_IndSampOptions.csv",
-                   response_var = rep(response_var, each = nrow(scenarios)),
-                   nsim = nsim,
-                   sample_column = sample_column,
-                   do.call("rbind", replicate(length(response_var), 
-                                              scenarios, simplify = FALSE))
-)
-
-pars$save_loc <- "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/"
-
-
-dim(pars)
-
-
-## resubmit failed outputs
-{
-  pars <- pars %>% 
-    mutate(id_col = paste(response_var, nsim, nosite.yr, noyear, effect.size, days, samfreq, sep = "_"))
-  
-  # read the combined file
-  outputs <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/outputs/power_datasets/combined_power_outputs.csv")
-  
-  # check which scenarios failed
-  outputs <- outputs %>% 
-    mutate(id_col = paste(response_var, nsim, nosite.yr, noyear, effect.size, days, samfreq, sep = "_"))
-  
-  pars <- pars[which(!pars$id_col %in% outputs$id_col),]
-  unique(pars$response_var)
-}
-
-pars$id_col <- NULL
-pars$X <- NULL
-pars$prox <- NULL
-
-dim(pars)
-
-# submit
-sjob <- slurm_apply(power_analysis, 
-                    pars, 
-                    jobname = "ncea_pwr",
-                    nodes = nrow(pars),
-                    cpus_per_node = 1, 
-                    submit = TRUE,
-                    slurm_options = list(account = "ceh_generic",
-                                         partition = "standard",
-                                         qos = "standard",
-                                         time = "23:59:59",
-                                         mem = "10000",
-                                         output = "pwr_%a.out",
-                                         error = "pwr_%a.err"),
-                    sh_template = "jasmin_submit_sh.txt")
+# source("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/scripts/functions/power_analysis.R")
+# 
+# dataset <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned_IndSampOptions.csv")
+# 
+# scenarios <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/scenarios/N_scenarios.csv")
+# 
+# colnames(scenarios) <- c("X", "nosite.yr", "noyear", "effect.size", "days", "samfreq", "prox")
+# 
+# # number of simulations
+# nsim = 100
+# 
+# # column to do sampling by
+# sample_column = "ps_samp"
+# 
+# # response variable
+# response_var = grep("_value", colnames(dataset), value = TRUE)
+# 
+# # create pars dataframe
+# pars <- data.frame(data_location = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/water_quality_data_cleaned_IndSampOptions.csv",
+#                    response_var = rep(response_var, each = nrow(scenarios)),
+#                    nsim = nsim,
+#                    sample_column = sample_column,
+#                    do.call("rbind", replicate(length(response_var), 
+#                                               scenarios, simplify = FALSE))
+# )
+# 
+# pars$save_loc <- "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/"
+# 
+# 
+# dim(pars)
+# 
+# 
+# ## resubmit failed outputs
+# {
+#   pars <- pars %>% 
+#     mutate(id_col = paste(response_var, nsim, nosite.yr, noyear, effect.size, days, samfreq, sep = "_"))
+#   
+#   # read the combined file
+#   outputs <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/outputs/power_datasets/combined_power_outputs.csv")
+#   
+#   # check which scenarios failed
+#   outputs <- outputs %>% 
+#     mutate(id_col = paste(response_var, nsim, nosite.yr, noyear, effect.size, days, samfreq, sep = "_"))
+#   
+#   pars <- pars[which(!pars$id_col %in% outputs$id_col),]
+#   unique(pars$response_var)
+# }
+# 
+# pars$id_col <- NULL
+# pars$X <- NULL
+# pars$prox <- NULL
+# 
+# dim(pars)
+# 
+# # submit
+# sjob <- slurm_apply(power_analysis, 
+#                     pars, 
+#                     jobname = "ncea_pwr",
+#                     nodes = nrow(pars),
+#                     cpus_per_node = 1, 
+#                     submit = TRUE,
+#                     slurm_options = list(account = "ceh_generic",
+#                                          partition = "standard",
+#                                          qos = "standard",
+#                                          time = "23:59:59",
+#                                          mem = "10000",
+#                                          output = "pwr_%a.out",
+#                                          error = "pwr_%a.err"),
+#                     sh_template = "jasmin_submit_sh.txt")
 
 
 
