@@ -172,6 +172,8 @@ dip_quantsum <- dip %>%
   dplyr::summarise(cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
                    cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE))
 
+# add sampled column again
+dip_quantsum$sampled_20 <- ifelse(dip_quantsum$sampling_point %in% sampdip$station_number, 1, 0)
 
 ## site data
 hist(site$water_level)
@@ -185,6 +187,9 @@ site_quantsum <- site %>%
   dplyr::group_by(sampling_point, easting, northing, year) %>% 
   dplyr::summarise(cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
                    cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE))
+
+# add sampled column again
+site_quantsum$sampled_20 <- ifelse(site_quantsum$sampling_point %in% sampsite, 1, 0)
 
 
 ## save

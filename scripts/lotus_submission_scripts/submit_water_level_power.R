@@ -20,26 +20,57 @@ library(tidyverse)
 
 # example function call
 water_power_analysis(
-  dataset_dip = read.csv("data/processed/dip_data_mn_5yrperc_change.csv"),
-  dataset_telem = read.csv("data/processed/site_data_mn_5yrperc_change.csv"),
+  dataset_dip = read.csv("data/processed/dip_data_5_95quantile_summary.csv"),
+  dataset_telem = read.csv("data/processed/site_data_5_95quantile_summary.csv"),
   sample_column = "sampled_20",
   model_pars = c("year", "sampling_point"),
   random_effect = c("sampling_point"),
-  days = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
-  response_var = "water_level",
+  days = 1, # number of sampling occasions per year, 1 if annual, 12 if monthly
+  response_var = "cent_5_value",
   effect.size = 0.01,
   nsim = 100,
   samfreq = 1,
   nosite.yr = 100, # number of sites sampled per year across all datasets
   noyear = 5,
-  prop_cont = 0.2,
+  prop_cont = 0.2, # proportion of continuous data
   save_loc = NULL)
+
+pars <- expand.grid(response_var = c("water_level", "perc_chg_ind", "cent_5_value", "cent_95_value"), 
+                    nosite.yr = seq(100, 600, by = 100),
+                    noyear = c(5, 10, 20, 25),
+                    prop_cont = c(20, 50, 80, 100),
+                    effect.size = c(0.001, 0.002, 0.01))
+
+dim(pars)
+View(dplyr::arrange(pars, response_var))
+
+
+dataset_dip <- rep(c("data/processed/dip_data_mn_5yrperc_change.csv", 
+                     "data/processed/dip_data_5_95quantile_summary.csv"), 
+                   each = dim(pars)[1]/2)
+
+dataset_telem <- rep(c("data/processed/site_data_mn_5yrperc_change.csv", 
+                     "data/processed/site_data_5_95quantile_summary.csv"), 
+                   each = dim(pars)[1]/2)
+
+days <- rep(c(1, 12))
+
+
 
 
 # create pars file
 
-pars#
+sample_column = "sample_20"
+days = 12
 
+response_var = "water_level"
+effect.size = c(0.01, )
+nsim = 100
+samfreq = 1
+nosite.yr = 100 # number of sites sampled per year across all datasets
+noyear = 5
+prop_cont = 0.2
+save_loc = NULL
 
 
 ### below is stuff from the water quality analysis - use as a template
