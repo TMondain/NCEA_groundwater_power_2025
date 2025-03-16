@@ -40,7 +40,7 @@ require(truncdist)
 # 
 # save_loc = NULL
 
-water_power_analysis <- function(
+water_level_power_analysis <- function(
     dataset_dip,
     dataset_telem,
     sample_column,
