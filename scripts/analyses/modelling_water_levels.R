@@ -66,9 +66,9 @@ water_power_analysis <- function(
   
   #### sample ------------------------------------------------------------------
   if(!is.null(sample_column)){
-  dipsamp <- dataset_dip[dataset_dip[,sample_column] == 1,]
-  
-  telemsamp <- dataset_telem[dataset_telem[,sample_column] == 1,]
+    dipsamp <- dataset_dip[dataset_dip[,sample_column] == 1,]
+    
+    telemsamp <- dataset_telem[dataset_telem[,sample_column] == 1,]
   }else{
     dipsamp <- dataset_dip
     telemsamp <- dataset_telem
@@ -251,7 +251,7 @@ water_power_analysis <- function(
     
     
     data_out <- list()
-   
+    
     #loop over simulations
     for (ii in 1:nsim){
       
@@ -270,7 +270,6 @@ water_power_analysis <- function(
       # simulating
       ########################################################################
       
-      ### need to work out how to incorporate days into the simulation of data
       # simulate the intercept (mean value)
       sim.int <- rtnorm(1, 
                         mean=model_params["intval"], 
@@ -287,7 +286,9 @@ water_power_analysis <- function(
       # }
       
       
-      ### add variation to intercept
+      ### add variation of each model parameter to the intercept
+      
+      # get variation associated with each of the model pars
       par_variab <- lapply(1:length(model_pars), function(i) {
         
         unique_levels <- unique(template_dat[,model_pars[i]])
@@ -306,7 +307,7 @@ water_power_analysis <- function(
         
       })
       
-      
+      # expand the variation for each of the model pars to the full template_dat size 
       variab_expanded <- lapply(par_variab, function(x) {
         
         x[,"int_with_var"][match(template_dat[, colnames(x)[1]], x[,1])]
@@ -314,7 +315,8 @@ water_power_analysis <- function(
       })
       
       
-      # add the list elements together
+      # add the list elements together to get the variability associated with all
+      # of the model pars combined 
       simint_variability <- Reduce("+", variab_expanded)
       
       template_dat$int <- simint_variability
@@ -503,6 +505,8 @@ water_power_analysis <- function(
   
   if(!is.null(save_loc)){
     
+    
+    message("! saving")  
     dir.create(save_loc, recursive = TRUE)
     write.csv(outs, 
               file = paste0(save_loc, "/", 
@@ -516,53 +520,53 @@ water_power_analysis <- function(
 }
 
 
-## run function:
-
-outs <- water_power_analysis(
-    dataset_dip = read.csv("data/processed/dip_data_mn_5yrperc_change.csv"),
-    dataset_telem = read.csv("data/processed/site_data_mn_5yrperc_change.csv"),
-    sample_column = "sampled_20",
-    model_pars = c("month", "year", "sampling_point"),
-    random_effect = c("month", "sampling_point"),
-    days = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
-    response_var = "water_level",
-    effect.size = 0.01,
-    nsim = 100,
-    samfreq = 1,
-    nosite.yr = 100, # number of sites sampled per year across all datasets
-    noyear = 5,
-    prop_cont = 0.2,
-    save_loc = NULL)
-
-
-# data1$site <- as.factor(data1$site)
-# #comparing models
-# mod0 <- glmmTMB(g.values~month+year+(1|sampling_point),data=data1,family=Gamma(link = "log"))
+# ## run function:
 # 
-# #extracting coefficients and their p-values 
-# coef.mod0 <- coef(summary(mod0))$cond
-# pvalyr0[ii] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
-# pvalmnth0[ii] <- coef.mod0[rownames(coef.mod0)=="month",colnames(coef.mod0)=="Pr(>|z|)"]
-# 
-# #checking if the estimated Year effect is in the same direction (positive/negative) 
-# #as the simulated one
-# sign.ts[ii] <- sign(tslope)==sign(coef.mod0[rownames(coef.mod0)=="year",
-#                                             colnames(coef.mod0)=="Estimate"])
+# outs <- water_power_analysis(
+#   dataset_dip = read.csv("data/processed/dip_data_mn_5yrperc_change.csv"),
+#   dataset_telem = read.csv("data/processed/site_data_mn_5yrperc_change.csv"),
+#   sample_column = "sampled_20",
+#   model_pars = c("month", "year", "sampling_point"),
+#   random_effect = c("month", "sampling_point"),
+#   days = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
+#   response_var = "water_level",
+#   effect.size = 0.01,
+#   nsim = 100,
+#   samfreq = 1,
+#   nosite.yr = 100, # number of sites sampled per year across all datasets
+#   noyear = 5,
+#   prop_cont = 0.2,
+#   save_loc = NULL)
 # 
 # 
-# rm(mod0)#to ensure that convergence issues do not result in the same results being repeated
-# # rm(mod_comp0)
-
-
-
-
-# message("! finished simulations")
+# # data1$site <- as.factor(data1$site)
+# # #comparing models
+# # mod0 <- glmmTMB(g.values~month+year+(1|sampling_point),data=data1,family=Gamma(link = "log"))
+# # 
+# # #extracting coefficients and their p-values 
+# # coef.mod0 <- coef(summary(mod0))$cond
+# # pvalyr0[ii] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
+# # pvalmnth0[ii] <- coef.mod0[rownames(coef.mod0)=="month",colnames(coef.mod0)=="Pr(>|z|)"]
+# # 
+# # #checking if the estimated Year effect is in the same direction (positive/negative) 
+# # #as the simulated one
+# # sign.ts[ii] <- sign(tslope)==sign(coef.mod0[rownames(coef.mod0)=="year",
+# #                                             colnames(coef.mod0)=="Estimate"])
+# # 
+# # 
+# # rm(mod0)#to ensure that convergence issues do not result in the same results being repeated
+# # # rm(mod_comp0)
 # 
-# #estimated power using p-values
-# fpower0 <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(pval0))
 # 
-# outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
-#                    days, samfreq, fpower0)
+# 
+# 
+# # message("! finished simulations")
+# # 
+# # #estimated power using p-values
+# # fpower0 <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(pval0))
+# # 
+# # outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
+# #                    days, samfreq, fpower0)
 
 
 

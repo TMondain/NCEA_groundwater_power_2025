@@ -23,8 +23,8 @@ water_power_analysis(
   dataset_dip = read.csv("data/processed/dip_data_mn_5yrperc_change.csv"),
   dataset_telem = read.csv("data/processed/site_data_mn_5yrperc_change.csv"),
   sample_column = "sampled_20",
-  model_pars = c("month", "year", "sampling_point"),
-  random_effect = c("month", "sampling_point"),
+  model_pars = c("year", "sampling_point"),
+  random_effect = c("sampling_point"),
   days = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
   response_var = "water_level",
   effect.size = 0.01,
@@ -34,6 +34,13 @@ water_power_analysis(
   noyear = 5,
   prop_cont = 0.2,
   save_loc = NULL)
+
+
+# create pars file
+
+pars#
+
+
 
 ### below is stuff from the water quality analysis - use as a template
 
