@@ -18,22 +18,24 @@ library(tidyverse)
 # Reading inputs
 ########################################################################
 
-# example function call
-water_power_analysis(
-  dataset_dip = read.csv("data/processed/dip_data_5_95quantile_summary.csv"),
-  dataset_telem = read.csv("data/processed/site_data_5_95quantile_summary.csv"),
-  sample_column = "sampled_20",
-  model_pars = c("year", "sampling_point"),
-  random_effect = c("sampling_point"),
-  days = 1, # number of sampling occasions per year, 1 if annual, 12 if monthly
-  response_var = "cent_5_value",
-  effect.size = 0.002,
-  nsim = 100,
-  samfreq = 1,
-  nosite.yr = 100, # number of sites sampled per year across all datasets
-  noyear = 5,
-  prop_cont = 0.2, # proportion of continuous data
-  save_loc = NULL)
+# # example function call
+# water_level_power_analysis(
+#   dataset_dip = read.csv("data/processed/dip_data_5_95quantile_summary.csv"),
+#   dataset_telem = read.csv("data/processed/site_data_5_95quantile_summary.csv"),
+#   sample_column = "sampled_20",
+#   model_pars = c("year", "sampling_point"),
+#   random_effect = c("sampling_point"),
+#   days = 1, # number of sampling occasions per year, 1 if annual, 12 if monthly
+#   response_var = "cent_5_value",
+#   effect.size = 0.002,
+#   nsim = 100,
+#   samfreq = 1,
+#   nosite.yr = 100, # number of sites sampled per year across all datasets
+#   noyear = 5,
+#   prop_cont = 0.2, # proportion of continuous data
+#   save_loc = NULL)
+
+source("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/scripts/functions/water_level_power_analysis.R")
 
 pars <- expand.grid(response_var = c("water_level", "perc_chg_ind", "cent_5_value", "cent_95_value"), 
                     nosite.yr = seq(100, 600, by = 100),
@@ -47,15 +49,21 @@ dim(pars)
 pars <- (dplyr::arrange(pars, response_var))
 # View(pars)
 
-dataset_dip <- rep(c("data/processed/dip_data_mn_5yrperc_change.csv", 
-                     "data/processed/dip_data_5_95quantile_summary.csv"), 
+dataset_dip <- rep(c("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/dip_data_mn_5yrperc_change.csv", 
+                     "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/dip_data_5_95quantile_summary.csv"), 
                    each = dim(pars)[1]/2)
 
-dataset_telem <- rep(c("data/processed/site_data_mn_5yrperc_change.csv", 
-                       "data/processed/site_data_5_95quantile_summary.csv"), 
+dataset_telem <- rep(c("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/site_data_mn_5yrperc_change.csv", 
+                       "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/site_data_5_95quantile_summary.csv"), 
                      each = dim(pars)[1]/2)
 
-days <- rep(c(1, 12), each = dim(pars)[1]/2)
+days <- rep(c(12, 1), each = dim(pars)[1]/2)
+
+model_pars_mnth = rep(paste(c("month", "year", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
+model_pars_annual = rep(paste(c("year", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
+
+random_effectmnth = rep(paste(c("month", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
+random_effectyr = rep("sampling_point", dim(pars)[1]/2)
 
 pars <- cbind(dataset_dip,
               dataset_telem,
@@ -64,6 +72,25 @@ pars <- cbind(dataset_dip,
 
 dim(pars)
 # View(pars)
+
+
+# submit
+sjob <- slurm_apply(water_level_power_analysis, 
+                    pars, 
+                    jobname = "ncea_pwr_lvl",
+                    nodes = nrow(pars),
+                    cpus_per_node = 1, 
+                    submit = TRUE,
+                    slurm_options = list(account = "ceh_generic",
+                                         partition = "standard",
+                                         qos = "standard",
+                                         time = "23:59:59",
+                                         mem = "10000",
+                                         output = "pwr_%a.out",
+                                         error = "pwr_%a.err"),
+                    sh_template = "jasmin_submit_sh.txt")
+
+
 
 
 ### below is stuff from the water quality analysis - use as a template

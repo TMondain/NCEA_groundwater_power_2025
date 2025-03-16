@@ -63,6 +63,12 @@ water_level_power_analysis <- function(
   if(inherits(dataset_telem, "character"))
     dataset_telem <- read.csv(dataset_telem)
   
+  if(grepl(";", model_pars))
+    model_pars <- strsplit(model_pars, ";")[[1]]
+  
+  if(grepl(";", random_effect))
+    random_effect <- strsplit(random_effect, ";")[[1]]
+  
   
   #### sample ------------------------------------------------------------------
   if(!is.null(sample_column)){
