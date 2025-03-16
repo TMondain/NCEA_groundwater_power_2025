@@ -372,7 +372,7 @@ water_power_analysis <- function(
     
   }
   
-  message("! Starting simulations")
+  message("! Starting data simulations")
   
   simdat_list <- lapply(1:length(model_para_vals), function(i) 
     simdat <- simulate_data(template_dat = expanded_datlist[[i]],
@@ -381,7 +381,7 @@ water_power_analysis <- function(
                             model_pars = model_pars)
   )
   
-  message("! finished simulations")
+  message("! finished data simulations")
   
   #### combine the data ----------------------------------------------------------
   
@@ -488,7 +488,7 @@ water_power_analysis <- function(
   
   fixed_effect = model_pars[-which(model_pars %in% random_effect)]
   
-  message("! Starting modelling")
+  message("! Starting power analysis")
   
   fpower0 <- run_power(simulated_data = comb_dat, 
                        nsim = nsim, 
@@ -497,7 +497,7 @@ water_power_analysis <- function(
                        fixed_effect = fixed_effect, 
                        effect.size = effect.size)
   
-  message("! finished modelling")
+  message("! finished power analysis")
   
   outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
                      days, samfreq, fpower0)

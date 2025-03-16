@@ -27,7 +27,7 @@ water_power_analysis(
   random_effect = c("sampling_point"),
   days = 1, # number of sampling occasions per year, 1 if annual, 12 if monthly
   response_var = "cent_5_value",
-  effect.size = 0.01,
+  effect.size = 0.002,
   nsim = 100,
   samfreq = 1,
   nosite.yr = 100, # number of sites sampled per year across all datasets
@@ -39,38 +39,31 @@ pars <- expand.grid(response_var = c("water_level", "perc_chg_ind", "cent_5_valu
                     nosite.yr = seq(100, 600, by = 100),
                     noyear = c(5, 10, 20, 25),
                     prop_cont = c(20, 50, 80, 100),
-                    effect.size = c(0.001, 0.002, 0.01))
+                    effect.size = c(0.001, 0.002, 0.01),
+                    samfreq = 1,
+                    save_loc <- "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/water_level")
 
 dim(pars)
-View(dplyr::arrange(pars, response_var))
-
+pars <- (dplyr::arrange(pars, response_var))
+# View(pars)
 
 dataset_dip <- rep(c("data/processed/dip_data_mn_5yrperc_change.csv", 
                      "data/processed/dip_data_5_95quantile_summary.csv"), 
                    each = dim(pars)[1]/2)
 
 dataset_telem <- rep(c("data/processed/site_data_mn_5yrperc_change.csv", 
-                     "data/processed/site_data_5_95quantile_summary.csv"), 
-                   each = dim(pars)[1]/2)
+                       "data/processed/site_data_5_95quantile_summary.csv"), 
+                     each = dim(pars)[1]/2)
 
-days <- rep(c(1, 12))
+days <- rep(c(1, 12), each = dim(pars)[1]/2)
 
+pars <- cbind(dataset_dip,
+              dataset_telem,
+              pars,
+              days)
 
-
-
-# create pars file
-
-sample_column = "sample_20"
-days = 12
-
-response_var = "water_level"
-effect.size = c(0.01, )
-nsim = 100
-samfreq = 1
-nosite.yr = 100 # number of sites sampled per year across all datasets
-noyear = 5
-prop_cont = 0.2
-save_loc = NULL
+dim(pars)
+# View(pars)
 
 
 ### below is stuff from the water quality analysis - use as a template
