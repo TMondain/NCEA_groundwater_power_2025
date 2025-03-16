@@ -1,6 +1,4 @@
 
-rm(list = ls())
-
 require(readxl)
 require(extraDistr)
 require(EnvStats)
@@ -69,6 +67,10 @@ water_level_power_analysis <- function(
   if(grepl(";", random_effect))
     random_effect <- strsplit(random_effect, ";")[[1]]
   
+  # convert these to as.character
+  sample_column <- as.character(sample_column)
+  response_var <- as.character(response_var)
+  save_loc <- as.character(save_loc)
   
   #### sample ------------------------------------------------------------------
   if(!is.null(sample_column)){
@@ -92,9 +94,10 @@ water_level_power_analysis <- function(
     # create formula
     f <- formula(paste0(response, "~1+", paste("(1|",model_covs,")", collapse = "+", sep = "")))
     
-    # remove NAs and 0s
+    # remove NAs and 0s and infs
     dat <- na.omit(dat[,c(model_covs, response)])
     dat <- dat[dat[, response] > 0,]
+    dat <- dat[is.finite(dat[,response]),]
     
     # run the model
     message("! Running initial model")
@@ -510,7 +513,6 @@ water_level_power_analysis <- function(
   
   
   if(!is.null(save_loc)){
-    
     
     message("! saving")  
     dir.create(save_loc, recursive = TRUE)

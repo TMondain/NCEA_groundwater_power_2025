@@ -1,4 +1,5 @@
 # submit power analysis to lotus 
+rm(list = ls())
 
 ########################################################################
 # Libraries
@@ -18,6 +19,103 @@ library(tidyverse)
 # Reading inputs
 ########################################################################
 
+source("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/scripts/functions/water_level_power_analysis.R")
+
+pars <- expand.grid(response_var = c("water_level", "perc_chg_ind", "cent_5_value", "cent_95_value"),
+                    sample_column = "sampled_20",
+                    nsim = 100,
+                    nosite.yr = seq(100, 600, by = 100),
+                    noyear = c(5, 10, 20, 25),
+                    prop_cont = c(0.2, 0.5, 0.8, 1),
+                    effect.size = c(0.001, 0.002, 0.01),
+                    samfreq = 1,
+                    save_loc = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/water_level")
+
+dim(pars)
+pars <- (dplyr::arrange(pars, response_var))
+# View(pars)
+colnames(pars)
+
+dataset_dip <- rep(c("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/dip_data_mn_5yrperc_change.csv", 
+                     "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/dip_data_5_95quantile_summary.csv"), 
+                   each = dim(pars)[1]/2)
+
+dataset_telem <- rep(c("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/site_data_mn_5yrperc_change.csv", 
+                       "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/site_data_5_95quantile_summary.csv"), 
+                     each = dim(pars)[1]/2)
+
+days <- rep(c(12, 1), each = dim(pars)[1]/2)
+
+model_pars_mnth = rep(paste(c("month", "year", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
+model_pars_annual = rep(paste(c("year", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
+
+random_effect_mnth = rep(paste(c("month", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
+random_effect_annual = rep("sampling_point", dim(pars)[1]/2)
+
+pars <- cbind(dataset_dip,
+              dataset_telem,
+              pars,
+              days,
+              model_pars = c(model_pars_mnth, model_pars_annual),
+              random_effect = c(random_effect_mnth, random_effect_annual))
+
+dim(pars)
+# View(pars)
+# colnames(pars)
+
+# convert these to as.character
+pars$sample_column <- as.character(pars$sample_column)
+pars$response_var <- as.character(pars$response_var)
+pars$save_loc <- as.character(pars$save_loc)
+
+
+# submit
+sjob <- slurm_apply(water_level_power_analysis, 
+                    pars, 
+                    jobname = "ncea_pwr_lvl",
+                    nodes = nrow(pars),
+                    cpus_per_node = 1, 
+                    submit = TRUE,
+                    slurm_options = list(account = "ceh_generic",
+                                         partition = "standard",
+                                         qos = "short",
+                                         time = "03:59:59",
+                                         mem = "10000",
+                                         output = "pwr_%a.out",
+                                         error = "pwr_%a.err"),
+                    sh_template = "jasmin_submit_sh.txt")
+
+
+
+
+
+
+### testing
+
+rwind = 292
+
+
+cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {
+  for(i in 1:ncol(param_df)) {
+    assign(colnames(param_df)[i], c(param_df[rownums, i]), envir = envir)
+  }
+}
+
+cols2vectors(pars, rwind)
+
+
+pwr <- power_analysis(data_location = pars$data_location[rwind],
+                      response_var = pars$response_var[rwind],
+                      nsim = pars$nsim[rwind],
+                      noyear = pars$noyear[rwind],
+                      nosite.yr = pars$nosite.yr[rwind],
+                      samfreq = pars$samfreq[rwind],
+                      effect.size = pars$effect.size[rwind],
+                      days = pars$days[rwind],
+                      save_loc = NULL)
+
+
+
 # # example function call
 # water_level_power_analysis(
 #   dataset_dip = read.csv("data/processed/dip_data_5_95quantile_summary.csv"),
@@ -34,62 +132,6 @@ library(tidyverse)
 #   noyear = 5,
 #   prop_cont = 0.2, # proportion of continuous data
 #   save_loc = NULL)
-
-source("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/scripts/functions/water_level_power_analysis.R")
-
-pars <- expand.grid(response_var = c("water_level", "perc_chg_ind", "cent_5_value", "cent_95_value"), 
-                    nosite.yr = seq(100, 600, by = 100),
-                    noyear = c(5, 10, 20, 25),
-                    prop_cont = c(20, 50, 80, 100),
-                    effect.size = c(0.001, 0.002, 0.01),
-                    samfreq = 1,
-                    save_loc <- "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/water_level")
-
-dim(pars)
-pars <- (dplyr::arrange(pars, response_var))
-# View(pars)
-
-dataset_dip <- rep(c("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/dip_data_mn_5yrperc_change.csv", 
-                     "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/dip_data_5_95quantile_summary.csv"), 
-                   each = dim(pars)[1]/2)
-
-dataset_telem <- rep(c("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/site_data_mn_5yrperc_change.csv", 
-                       "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/processed/water_level/site_data_5_95quantile_summary.csv"), 
-                     each = dim(pars)[1]/2)
-
-days <- rep(c(12, 1), each = dim(pars)[1]/2)
-
-model_pars_mnth = rep(paste(c("month", "year", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
-model_pars_annual = rep(paste(c("year", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
-
-random_effectmnth = rep(paste(c("month", "sampling_point"), collapse = ";"), dim(pars)[1]/2)
-random_effectyr = rep("sampling_point", dim(pars)[1]/2)
-
-pars <- cbind(dataset_dip,
-              dataset_telem,
-              pars,
-              days)
-
-dim(pars)
-# View(pars)
-
-
-# submit
-sjob <- slurm_apply(water_level_power_analysis, 
-                    pars, 
-                    jobname = "ncea_pwr_lvl",
-                    nodes = nrow(pars),
-                    cpus_per_node = 1, 
-                    submit = TRUE,
-                    slurm_options = list(account = "ceh_generic",
-                                         partition = "standard",
-                                         qos = "standard",
-                                         time = "23:59:59",
-                                         mem = "10000",
-                                         output = "pwr_%a.out",
-                                         error = "pwr_%a.err"),
-                    sh_template = "jasmin_submit_sh.txt")
-
 
 
 
@@ -166,33 +208,6 @@ sjob <- slurm_apply(water_level_power_analysis,
 #                     sh_template = "jasmin_submit_sh.txt")
 
 
-
-
-
-
-### testing
-
-rwind = 1090
-
-pwr <- power_analysis(data_location = pars$data_location[rwind],
-                      response_var = pars$response_var[rwind],
-                      nsim = pars$nsim[rwind],
-                      noyear = pars$noyear[rwind],
-                      nosite.yr = pars$nosite.yr[rwind],
-                      samfreq = pars$samfreq[rwind],
-                      effect.size = pars$effect.size[rwind],
-                      days = pars$days[rwind],
-                      save_loc = NULL)
-
-
-
-cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {
-  for(i in 1:ncol(param_df)) {
-    assign(colnames(param_df)[i], c(param_df[rownums, i]), envir = envir)
-  }
-}
-
-cols2vectors(pars, rwind)
 
 
 
