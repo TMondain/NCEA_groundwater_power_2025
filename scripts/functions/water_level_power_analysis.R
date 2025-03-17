@@ -99,6 +99,8 @@ water_level_power_analysis <- function(
     dat <- dat[dat[, response] > 0,]
     dat <- dat[is.finite(dat[,response]),]
     
+    dat[model_covs] <- lapply(dat[model_covs], factor) 
+    
     # run the model
     message("! Running initial model")
     mod <- glmmTMB(f,data=dat,family=Gamma(link = "log"))
@@ -197,7 +199,7 @@ water_level_power_analysis <- function(
   
   # View the first few rows of the expanded data
   head(expanded_data)
-  table(expanded_data[,c("site","year")])
+  # table(expanded_data[,c("site","year")])
   length(unique(expanded_data$site))
   
   
@@ -383,6 +385,11 @@ water_level_power_analysis <- function(
   
   message("! Starting data simulations")
   
+  if(prop_cont == 1) {
+    model_para_vals[[1]] <- NULL
+    expanded_datlist[[1]] <- NULL
+  }
+  
   simdat_list <- lapply(1:length(model_para_vals), function(i) 
     simdat <- simulate_data(template_dat = expanded_datlist[[i]],
                             model_params = model_para_vals[[i]],
@@ -393,7 +400,7 @@ water_level_power_analysis <- function(
   message("! finished data simulations")
   
   #### combine the data ----------------------------------------------------------
-  
+    
   # this loops through the number of simulations and combines the simulations from
   # the two datasets (works for many datasets though)
   comb_dat <- lapply(1:nsim, function(x) {
@@ -401,7 +408,6 @@ water_level_power_analysis <- function(
       simdat_list[[i]][[x]]
     }))
   })
-  
   
   ########################################################################
   #Power analysis
@@ -427,6 +433,9 @@ water_level_power_analysis <- function(
     
     #results will be stored here
     for(ii in 1:nsim) {
+      
+      if(ii %% 10 == 0)
+        message(paste("! iteration", ii))
       
       for(rf in 1:length(random_effect)){
         simulated_data[[ii]][,random_effect[rf]] <- as.factor(simulated_data[[ii]][,random_effect[rf]])
@@ -508,8 +517,8 @@ water_level_power_analysis <- function(
   
   message("! finished power analysis")
   
-  outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
-                     days, samfreq, fpower0)
+  outs <- data.frame(response_var, sample_column, nsim, nosite.yr, noyear, effect.size, 
+                     days, samfreq, prop_cont,  fpower0)
   
   
   if(!is.null(save_loc)){
@@ -518,8 +527,8 @@ water_level_power_analysis <- function(
     dir.create(save_loc, recursive = TRUE)
     write.csv(outs, 
               file = paste0(save_loc, "/", 
-                            paste(response_var, nsim, nosite.yr, noyear, effect.size, 
-                                  days, samfreq, collapse = "_"), ".csv"))
+                            paste(response_var, sample_column, nsim, nosite.yr, noyear, effect.size, 
+                                  days, samfreq, prop_cont, sep = "_"), ".csv"))
     
   }
   

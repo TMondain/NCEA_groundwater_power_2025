@@ -68,6 +68,7 @@ pars$sample_column <- as.character(pars$sample_column)
 pars$response_var <- as.character(pars$response_var)
 pars$save_loc <- as.character(pars$save_loc)
 
+# View(pars)
 
 # submit
 sjob <- slurm_apply(water_level_power_analysis, 
@@ -104,15 +105,15 @@ cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {
 cols2vectors(pars, rwind)
 
 
-pwr <- power_analysis(data_location = pars$data_location[rwind],
-                      response_var = pars$response_var[rwind],
-                      nsim = pars$nsim[rwind],
-                      noyear = pars$noyear[rwind],
-                      nosite.yr = pars$nosite.yr[rwind],
-                      samfreq = pars$samfreq[rwind],
-                      effect.size = pars$effect.size[rwind],
-                      days = pars$days[rwind],
-                      save_loc = NULL)
+# pwr <- power_analysis(data_location = pars$data_location[rwind],
+#                       response_var = pars$response_var[rwind],
+#                       nsim = pars$nsim[rwind],
+#                       noyear = pars$noyear[rwind],
+#                       nosite.yr = pars$nosite.yr[rwind],
+#                       samfreq = pars$samfreq[rwind],
+#                       effect.size = pars$effect.size[rwind],
+#                       days = pars$days[rwind],
+#                       save_loc = NULL)
 
 
 
