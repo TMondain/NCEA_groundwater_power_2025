@@ -517,7 +517,10 @@ water_level_power_analysis <- function(
   
   message("! finished power analysis")
   
-  outs <- data.frame(response_var, sample_column, nsim, nosite.yr, noyear, effect.size, 
+  outs <- data.frame(response_var, sample_column, 
+                     model_pars = paste(model_pars, collapse = "_"),
+                     random_effect = paste(model_pars, collapse = "_"),
+                     nsim, nosite.yr, noyear, effect.size, 
                      days, samfreq, prop_cont,  fpower0)
   
   
