@@ -5,6 +5,70 @@ rm(list = ls())
 library(tidyverse)
 
 
+#### water quality -------------------------------------------------------------
+
+# red combined power file
+pwr <- read.csv("outputs/power_datasets/water_quality_combined_power_outputs.csv")
+head(pwr, 15)
+
+unique(pwr$response_var)
+
+pwr <- pwr %>%
+  mutate(resp_var_clean = gsub("_", " ", response_var))
+
+
+dir.create("outputs/plots/water_quality")
+
+rvar <- unique(pwr$resp_var_clean)
+
+for(i in 1:length(rvar)) {
+  
+  pl_nyr_x <- 
+    ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
+           aes(noyear, fpower0, colour = factor(samfreq), linetype = factor(days))) +
+    geom_line(size = 1) +
+    geom_hline(yintercept = 70, linetype = "dashed") +
+    geom_hline(yintercept = 80, linetype = "dashed") +
+    facet_grid(effect.size~nosite.yr, 
+               labeller = "label_both") +
+    ggtitle(paste(rvar[i])) +
+    xlab("Number of years") +
+    ylab("Power (% significant results)") +
+    scale_colour_manual(values =  viridis::viridis(5)[c(1:4)],
+                        name = "Repeat sampling cycle") +
+    scale_linetype(name = "Within-year\nrepeat sampling")
+  
+  
+  pl_nsite_x <- 
+    ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
+           aes(nosite.yr, fpower0, colour = factor(samfreq), linetype =  factor(days))) +
+    geom_line(size = 1) +
+    geom_hline(yintercept = 70, linetype = "dashed") +
+    geom_hline(yintercept = 80, linetype = "dashed") +
+    facet_grid(effect.size~noyear, 
+               labeller = "label_both") +
+    ggtitle(paste(rvar[i])) +
+    xlab("Number of sites per year") +
+    ylab("Power (% significant results)") +
+    scale_colour_manual(values =  viridis::viridis(5)[c(1:4)],
+                        name = "Repeat sampling cycle") +
+    scale_linetype(name = "Within-year\nrepeat sampling")  
+  
+  
+  ggsave(pl_nyr_x, 
+         filename = paste0("outputs/plots/water_quality/", rvar[i], "number_years_x-axis.png"),
+         width = 14, height = 6)
+  
+  ggsave(pl_nsite_x, 
+         filename = paste0("outputs/plots/water_quality/", rvar[i], "number_site_per_year_x-axis.png"),
+         width = 8, height = 6)
+  
+}
+
+
+
+#### Water level data ----------------------------------------------------------
+
 # red combined power file
 pwr <- read.csv("outputs/power_datasets/water_level_combined_power_outputs.csv")
 head(pwr, 15)
@@ -67,8 +131,10 @@ for(i in 1:length(rvar)) {
 
 
 
+#### water temperature ---------------------------------------------------------
+
 # red combined power file
-pwr <- read.csv("outputs/power_datasets/water_quality_combined_power_outputs.csv")
+pwr <- read.csv("outputs/power_datasets/water_temp_combined_power_outputs.csv")
 head(pwr, 15)
 
 unique(pwr$response_var)
@@ -77,7 +143,7 @@ pwr <- pwr %>%
   mutate(resp_var_clean = gsub("_", " ", response_var))
 
 
-dir.create("outputs/plots/water_quality")
+dir.create("outputs/plots/water_temp")
 
 rvar <- unique(pwr$resp_var_clean)
 
@@ -85,43 +151,114 @@ for(i in 1:length(rvar)) {
   
   pl_nyr_x <- 
     ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
-           aes(noyear, fpower0, colour = factor(samfreq), linetype = factor(days))) +
+           aes(noyear, fpower0, colour = factor(effect.size))) +# , linetype = factor(effect.size))) +
     geom_line(size = 1) +
     geom_hline(yintercept = 70, linetype = "dashed") +
     geom_hline(yintercept = 80, linetype = "dashed") +
-    facet_grid(effect.size~nosite.yr, 
+    facet_grid(~nosite.yr,
                labeller = "label_both") +
     ggtitle(paste(rvar[i])) +
     xlab("Number of years") +
     ylab("Power (% significant results)") +
-    scale_colour_manual(values =  viridis::viridis(5)[c(1:4)],
-                        name = "Repeat sampling cycle") +
-    scale_linetype(name = "Within-year\nrepeat sampling")
+    scale_colour_manual(values =  viridis::viridis(6)[c(1,3,4)],
+                        name = "Effect size") #,
+                        # name = "Repeat sampling cycle") +
+    # scale_linetype(name = "Within-year\nrepeat sampling")
+  
+  
+  # pl_nsite_x <- 
+  #   ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
+  #          aes(nosite.yr, fpower0, colour = factor(samfreq), linetype =  factor(days))) +
+  #   geom_line(size = 1) +
+  #   geom_hline(yintercept = 70, linetype = "dashed") +
+  #   geom_hline(yintercept = 80, linetype = "dashed") +
+  #   facet_grid(effect.size~noyear, 
+  #              labeller = "label_both") +
+  #   ggtitle(paste(rvar[i])) +
+  #   xlab("Number of sites per year") +
+  #   ylab("Power (% significant results)") +
+  #   scale_colour_manual(values =  viridis::viridis(5)[c(1:4)],
+  #                       name = "Repeat sampling cycle") +
+  #   scale_linetype(name = "Within-year\nrepeat sampling")  
+  # 
+  
+  ggsave(pl_nyr_x, 
+         filename = paste0("outputs/plots/water_temp/", rvar[i], "number_years_x-axis.png"),
+         width = 14, height = 6)
+  
+  # ggsave(pl_nsite_x, 
+  #        filename = paste0("outputs/plots/water_quality/", rvar[i], "number_site_per_year_x-axis.png"),
+  #        width = 8, height = 6)
+  
+}
+
+
+
+
+
+#### water quality -------------------------------------------------------------
+
+# red combined power file
+pwr <- read.csv("outputs/power_datasets/water_qual_reg_combined_power_outputs.csv")
+head(pwr, 15)
+
+unique(pwr$response_var)
+
+pwr <- pwr %>%
+  mutate(resp_var_clean = gsub("_", " ", response_var))
+
+
+dir.create("outputs/plots/water_quality_reg")
+
+rvar <- unique(pwr$resp_var_clean)
+
+for(i in 1:length(rvar)) {
+  
+  pl_nyr_x <- 
+    ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
+           aes(noyear, fpower0, colour = factor(nosite.yr), linetype = factor(samfreq))) +
+    geom_line(size = 1) +
+    geom_hline(yintercept = 70, linetype = "dashed") +
+    geom_hline(yintercept = 80, linetype = "dashed") +
+    facet_grid(effect.size~sample_column, 
+               labeller = "label_both") +
+    ggtitle(paste(rvar[i])) +
+    xlab("Number of years") +
+    ylab("Power (% significant results)") +
+    scale_linetype(name = "Repeat sampling cycle") +
+    scale_colour_manual(values =  viridis::viridis(10),
+                        name = "Number sites per year")
+  
+  # +
+    # xlab("Number of years") +
+    # ylab("Power (% significant results)") +
+    # scale_colour_manual(values =  viridis::viridis(5))#[c(1:4)])#,
+                        # name = "Repeat sampling cycle") +
+    # scale_linetype(name = "Within-year\nrepeat sampling")
   
   
   pl_nsite_x <- 
     ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
-           aes(nosite.yr, fpower0, colour = factor(samfreq), linetype =  factor(days))) +
+          aes(nosite.yr, fpower0, colour = factor(noyear), linetype = factor(samfreq))) +
     geom_line(size = 1) +
     geom_hline(yintercept = 70, linetype = "dashed") +
     geom_hline(yintercept = 80, linetype = "dashed") +
-    facet_grid(effect.size~noyear, 
+    facet_grid(effect.size~sample_column, 
                labeller = "label_both") +
     ggtitle(paste(rvar[i])) +
     xlab("Number of sites per year") +
     ylab("Power (% significant results)") +
-    scale_colour_manual(values =  viridis::viridis(5)[c(1:4)],
-                        name = "Repeat sampling cycle") +
-    scale_linetype(name = "Within-year\nrepeat sampling")  
+    scale_linetype(name = "Repeat sampling cycle") +
+    scale_colour_manual(values =  viridis::viridis(4)[c(1:3)],
+                        name = "Number of years")
   
   
   ggsave(pl_nyr_x, 
-         filename = paste0("outputs/plots/water_quality/", rvar[i], "number_years_x-axis.png"),
+         filename = paste0("outputs/plots/water_quality_reg/", rvar[i], "number_years_x-axis.png"),
          width = 14, height = 6)
   
   ggsave(pl_nsite_x, 
-         filename = paste0("outputs/plots/water_quality/", rvar[i], "number_site_per_year_x-axis.png"),
-         width = 8, height = 6)
+         filename = paste0("outputs/plots/water_quality_reg/", rvar[i], "number_site_per_year_x-axis.png"),
+         width = 14, height = 6)
   
 }
-
