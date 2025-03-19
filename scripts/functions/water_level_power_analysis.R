@@ -41,7 +41,7 @@ require(truncdist)
 water_level_power_analysis <- function(
     dataset_dip,
     dataset_telem,
-    sample_column,
+    sample_column = NULL,
     model_pars,
     random_effect,
     days,# number of sampling occasions per year, 1 if annual, 12 if monthly
@@ -68,14 +68,19 @@ water_level_power_analysis <- function(
     random_effect <- strsplit(random_effect, ";")[[1]]
   
   # convert these to as.character
-  sample_column <- as.character(sample_column)
+  if(!is.null(sample_column))
+    sample_column <- as.character(sample_column)
   response_var <- as.character(response_var)
   save_loc <- as.character(save_loc)
   
+  
   #### sample ------------------------------------------------------------------
+  ## need to change the code to work with only one dataset!!!
+  ## change it to be one input with a ";" separated character of data locations - 
+  ## then strsplit to create a list
+  ## then lapply() through the datasets to read and create list of dataframes!!!
   if(!is.null(sample_column)){
     dipsamp <- dataset_dip[dataset_dip[,sample_column] == 1,]
-    
     telemsamp <- dataset_telem[dataset_telem[,sample_column] == 1,]
   }else{
     dipsamp <- dataset_dip
@@ -230,6 +235,15 @@ water_level_power_analysis <- function(
   # I think this worked
   lapply(expanded_datlist, dim)
   
+  # remove datasets with no data
+  for(x in 1:length(expanded_datlist)) {
+    
+    if(dim(expanded_datlist[[x]])[1] == 0) {
+      model_para_vals[[x]] <- NULL
+      expanded_datlist[[x]] <- NULL
+    } 
+    
+  }
   
   
   
@@ -385,10 +399,6 @@ water_level_power_analysis <- function(
   
   message("! Starting data simulations")
   
-  if(prop_cont == 1) {
-    model_para_vals[[1]] <- NULL
-    expanded_datlist[[1]] <- NULL
-  }
   
   simdat_list <- lapply(1:length(model_para_vals), function(i) 
     simdat <- simulate_data(template_dat = expanded_datlist[[i]],
@@ -400,7 +410,7 @@ water_level_power_analysis <- function(
   message("! finished data simulations")
   
   #### combine the data ----------------------------------------------------------
-    
+  
   # this loops through the number of simulations and combines the simulations from
   # the two datasets (works for many datasets though)
   comb_dat <- lapply(1:nsim, function(x) {
@@ -419,7 +429,7 @@ water_level_power_analysis <- function(
   # 
   # effect.size = effect.size
   
-  run_power <- function(simulated_data, 
+  run_power <- function(simulated_data, # a list of dataframes, one for each simulation
                         nsim, 
                         # model_pars, 
                         random_effect, 
@@ -435,7 +445,7 @@ water_level_power_analysis <- function(
     for(ii in 1:nsim) {
       
       if(ii %% 10 == 0)
-        message(paste("! iteration", ii))
+        cat(paste0("iteration: ", ii, "\n"))
       
       for(rf in 1:length(random_effect)){
         simulated_data[[ii]][,random_effect[rf]] <- as.factor(simulated_data[[ii]][,random_effect[rf]])
@@ -517,7 +527,8 @@ water_level_power_analysis <- function(
   
   message("! finished power analysis")
   
-  outs <- data.frame(response_var, sample_column, 
+  outs <- data.frame(response_var,
+                     sample_column = ifelse(!is.null(sample_column), sample_column, NA),
                      model_pars = paste(model_pars, collapse = "_"),
                      random_effect = paste(model_pars, collapse = "_"),
                      nsim, nosite.yr, noyear, effect.size, 
@@ -530,7 +541,8 @@ water_level_power_analysis <- function(
     dir.create(save_loc, recursive = TRUE)
     write.csv(outs, 
               file = paste0(save_loc, "/", 
-                            paste(response_var, sample_column, nsim, nosite.yr, noyear, effect.size, 
+                            paste(response_var,  ifelse(!is.null(sample_column), sample_column, ""), 
+                                  nsim, nosite.yr, noyear, effect.size, 
                                   days, samfreq, prop_cont, sep = "_"), ".csv"))
     
   }
