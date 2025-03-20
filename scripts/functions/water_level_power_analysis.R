@@ -204,7 +204,6 @@ water_level_power_analysis <- function(
   
   # View the first few rows of the expanded data
   head(expanded_data)
-  # table(expanded_data[,c("site","year")])
   length(unique(expanded_data$site))
   
   
@@ -215,7 +214,6 @@ water_level_power_analysis <- function(
   message("! altering dataset proportions")
   
   ## could write this to work for any number of datasets
-  
   if(length(dats_list)>1) {
     
     # calculate number of sites to sample
@@ -254,11 +252,6 @@ water_level_power_analysis <- function(
   # Starting simulations for this scenario
   ########################################################################
   
-  # template_dat = expanded_data
-  # model_params = model_para_vals[[1]]
-  # nsim = nsim
-  # nosite = 100
-  # model_pars = model_pars
   
   #### function starts here
   simulate_data <- function(template_dat,
@@ -270,11 +263,8 @@ water_level_power_analysis <- function(
     #effect.size 
     #note: here I tested whether there is a difference when simulating positive or negative effect sizes,  
     #but there is no difference in the results. So, only simulating the negative effect
-    #effect.size is always negative
     tslope <- effect.size
-    #tslope <- -(effect.size)#positive
-    
-    
+
     data_out <- list()
     
     #loop over simulations
@@ -286,11 +276,6 @@ water_level_power_analysis <- function(
       #number of unique sites (this number depends on sampling frequency 
       #(annual freq. will have the smallest number of unique sites))
       
-      
-      #### need to alter the proportion - should this be done outside of the function?
-      # or should I add a proportion call to this
-      
-      
       ########################################################################
       # simulating
       ########################################################################
@@ -299,17 +284,6 @@ water_level_power_analysis <- function(
       sim.int <- rtnorm(1, 
                         mean=model_params["intval"], 
                         sd=model_params["intsd"])
-      
-      # ## go through each of the model_pars and add variation to the intercept
-      # for(i in 1:length(model_pars)) {
-      #   n_samples <- length(unique(template_dat[,model_pars[i]]))
-      #   sim.int <- sim.int + 
-      #     rnorm(n_samples, 
-      #           mean=0, 
-      #           sd=model_params[model_pars[i]])
-      #   
-      # }
-      
       
       ### add variation of each model parameter to the intercept
       
@@ -345,29 +319,6 @@ water_level_power_analysis <- function(
       simint_variability <- Reduce("+", variab_expanded)
       
       template_dat$int <- simint_variability
-      
-      
-      # #adding site variability
-      # int.df <- data.frame(int = sim.int + 
-      #                        rnorm(nosite, 
-      #                              mean=0, 
-      #                              sd=model_params["sampling_point"]), 
-      #                      site = unique(expanded_data$site))
-      # 
-      # template_dat$int <- int.df$int[match(template_dat$site, int.df$site)]
-      # 
-      # #adding monthly variability 
-      # month_levels <- unique(days)
-      # 
-      # #adding year variability
-      # year_levels <- unique(expanded_data$year) 
-      # year_effects <- rnorm(length(year_levels), 
-      #                       mean = 0, 
-      #                       sd = yrsd)
-      # 
-      # year_df <- data.frame(year = year_levels, year_effect = year_effects)
-      # template_dat <- merge(template_dat, year_df, by = "year", all.x = TRUE)
-      # template_dat$int <- template_dat$int + expanded_data$year_effect
       
       
       ########################################################################
@@ -419,25 +370,21 @@ water_level_power_analysis <- function(
     }))
   })
   
+  
+  
   ########################################################################
   #Power analysis
   ########################################################################
   
-  # simulated_data = comb_dat
-  # 
-  # fixed_effect = model_pars[-which(model_pars %in% random_effect)]
-  # 
-  # effect.size = effect.size
-  
   run_power <- function(simulated_data, # a list of dataframes, one for each simulation
                         nsim, 
-                        # model_pars, 
                         random_effect, 
                         fixed_effect, 
                         effect.size) {
     
     #results will be stored here
-    pvalyr0 <- sign.ts <- rep(NA,nsim) # pvalmnth0 <- 
+    #figure out how to extract parameters for multiple fixed effects
+    pvalyr0 <- sign.ts <- rep(NA,nsim)
     
     fpower0 <- rep(NA,nsim)
     
@@ -461,50 +408,12 @@ water_level_power_analysis <- function(
       #extracting coefficients and their p-values 
       coef.mod0 <- coef(summary(mod0))$cond
       
-      # get pvalue
-      # pvalyr0[ii] <- 
-      ## this is only writted for one fixed effect!!!!!
+     
+      ## this is only written for one fixed effect!!!!!
       pvalyr0[[ii]] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
-      
-      # lapply(1:length(fixed_effect), function(fe){
-      
-      # coef.mod0[rownames(coef.mod0)==fixed_effect[fe],colnames(coef.mod0)=="Pr(>|z|)"]
-      #checking if the estimated Year effect is in the same direction (positive/negative) 
-      #as the simulated one
-      
-      # })
       
       sign.ts[[ii]] <- sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)=="year",
                                                          colnames(coef.mod0)=="Estimate"])
-      # lapply(1:length(fixed_effect), function(fe) {
-      
-      # sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)==fixed_effect[fe],
-      #                                   colnames(coef.mod0)=="Estimate"])
-      
-      # })
-      
-      
-      
-      
-      # #estimated power using p-values
-      # need to write this for multiple fixed effects
-      # lapply(1:length(fixed_effect), function(fe) {
-      # 
-      #   length(which(pvalyr0[[fe]]<0.05 & !is.na(pvalyr0[[fe]]) & sign.ts[[fe]]))#*100/length(sort(pvalyr0[[fe]]))
-      # 
-      # })
-      
-      # fpower0 <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(pval0))
-      
-      
-      
-      # pvalmnth0[ii] <- coef.mod0[rownames(coef.mod0)=="month",colnames(coef.mod0)=="Pr(>|z|)"]
-      # #checking if the estimated Year effect is in the same direction (positive/negative) 
-      # #as the simulated one
-      # ## I don't think this is necessary for month as we're not interested in detecting
-      # ## monthly trends (haven't simulated any), only yearly.
-      # sign.ts[ii] <- sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)=="month",
-      #                                                  colnames(coef.mod0)=="Estimate"])
       
     }
     
@@ -550,61 +459,4 @@ water_level_power_analysis <- function(
   return(outs)
   
 }
-
-
-# ## run function:
-# 
-# outs <- water_power_analysis(
-#   dataset_dip = read.csv("data/processed/dip_data_mn_5yrperc_change.csv"),
-#   dataset_telem = read.csv("data/processed/site_data_mn_5yrperc_change.csv"),
-#   sample_column = "sampled_20",
-#   model_pars = c("month", "year", "sampling_point"),
-#   random_effect = c("month", "sampling_point"),
-#   days = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
-#   response_var = "water_level",
-#   effect.size = 0.01,
-#   nsim = 100,
-#   samfreq = 1,
-#   nosite.yr = 100, # number of sites sampled per year across all datasets
-#   noyear = 5,
-#   prop_cont = 0.2,
-#   save_loc = NULL)
-# 
-# 
-# # data1$site <- as.factor(data1$site)
-# # #comparing models
-# # mod0 <- glmmTMB(g.values~month+year+(1|sampling_point),data=data1,family=Gamma(link = "log"))
-# # 
-# # #extracting coefficients and their p-values 
-# # coef.mod0 <- coef(summary(mod0))$cond
-# # pvalyr0[ii] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
-# # pvalmnth0[ii] <- coef.mod0[rownames(coef.mod0)=="month",colnames(coef.mod0)=="Pr(>|z|)"]
-# # 
-# # #checking if the estimated Year effect is in the same direction (positive/negative) 
-# # #as the simulated one
-# # sign.ts[ii] <- sign(tslope)==sign(coef.mod0[rownames(coef.mod0)=="year",
-# #                                             colnames(coef.mod0)=="Estimate"])
-# # 
-# # 
-# # rm(mod0)#to ensure that convergence issues do not result in the same results being repeated
-# # # rm(mod_comp0)
-# 
-# 
-# 
-# 
-# # message("! finished simulations")
-# # 
-# # #estimated power using p-values
-# # fpower0 <- length(which(pval0<0.05 & !is.na(pval0) & sign.ts))*100/length(sort(pval0))
-# # 
-# # outs <- data.frame(response_var, nsim, nosite.yr, noyear, effect.size, 
-# #                    days, samfreq, fpower0)
-
-
-
-
-
-
-
-
 
