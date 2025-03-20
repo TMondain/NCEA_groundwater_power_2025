@@ -10,34 +10,6 @@ require(ggplot2)
 require(truncdist)
 
 
-# dataset_dip = read.csv("data/processed/dip_data_mn_5yrperc_change.csv")
-# 
-# dataset_telem = read.csv("data/processed/site_data_mn_5yrperc_change.csv")
-# 
-# sample_column = "sampled_20"
-# 
-# model_pars = c("month", "year", "sampling_point")
-# 
-# random_effect = c("month", "sampling_point")
-# 
-# days = 12 # number of sampling occasions per year, 1 if annual, 12 if monthly
-# 
-# response_var = "water_level"
-# 
-# effect.size = 0.01
-# 
-# nsim = 100
-# 
-# samfreq = 1
-# 
-# nosite.yr = 100 # number of sites sampled per year across all datasets
-# 
-# noyear = 5
-# 
-# prop_cont = 0.2
-# 
-# save_loc = NULL
-
 water_level_power_analysis <- function(
     dataset_dip,
     dataset_telem,
@@ -54,13 +26,32 @@ water_level_power_analysis <- function(
     prop_cont,
     save_loc) {
   
-  #### read file
-  if(inherits(dataset_dip, "character"))
-    dataset_dip <- read.csv(dataset_dip)
+  # submitting >1 dataset
+  dataset = paste("data/processed/dip_data_mn_5yrperc_change.csv", 
+                  "data/processed/dip_data_5_95quantile_summary.csv", sep = ";")
   
-  if(inherits(dataset_telem, "character"))
-    dataset_telem <- read.csv(dataset_telem)
+  strsplit(dataset, ";")[[1]]
   
+  
+  if(inherits(dataset, "character")) {
+    message("! reading datasets")
+    dats_list <- lapply(strsplit(dataset, ";")[[1]], read.csv)
+  } else if(inherits(dataset, "list")) {
+    dats_list <- dataset
+  } else if(inherits(dataset, "data.frame")) {
+    dats_list <- list(dataset)
+  } else {
+    stop("! 'dataset' must be of class 'character', 'list' or 'data.frame'")
+  }
+  
+  # #### read file - remove this?
+  # if(inherits(dataset_dip, "character"))
+  #   dataset_dip <- read.csv(dataset_dip)
+  # 
+  # if(inherits(dataset_telem, "character"))
+  #   dataset_telem <- read.csv(dataset_telem)
+  
+  # sort out parameters
   if(grepl(";", model_pars))
     model_pars <- strsplit(model_pars, ";")[[1]]
   
@@ -79,16 +70,25 @@ water_level_power_analysis <- function(
   ## change it to be one input with a ";" separated character of data locations - 
   ## then strsplit to create a list
   ## then lapply() through the datasets to read and create list of dataframes!!!
-  if(!is.null(sample_column)){
-    dipsamp <- dataset_dip[dataset_dip[,sample_column] == 1,]
-    telemsamp <- dataset_telem[dataset_telem[,sample_column] == 1,]
-  }else{
-    dipsamp <- dataset_dip
-    telemsamp <- dataset_telem
+  # if(!is.null(sample_column)){
+  #   dipsamp <- dataset_dip[dataset_dip[,sample_column] == 1,]
+  #   telemsamp <- dataset_telem[dataset_telem[,sample_column] == 1,]
+  # }else{
+  #   dipsamp <- dataset_dip
+  #   telemsamp <- dataset_telem
+  # }
+  # 
+  # # combine into single list?
+  # dats_list <- list(dipsamp, telemsamp)
+  
+  # loop through and sample
+  if(!is.null(sample_column)) {
+    dats_list <- lapply(dats_list, function(x) {
+      x[x[,sample_column] == 1,]
+      })
   }
   
-  # combine into single list?
-  dats_list <- list(dipsamp, telemsamp)
+  
   
   
   #### initial model -----------------------------------------------------------
@@ -264,7 +264,7 @@ water_level_power_analysis <- function(
     #note: here I tested whether there is a difference when simulating positive or negative effect sizes,  
     #but there is no difference in the results. So, only simulating the negative effect
     tslope <- effect.size
-
+    
     data_out <- list()
     
     #loop over simulations
@@ -408,7 +408,7 @@ water_level_power_analysis <- function(
       #extracting coefficients and their p-values 
       coef.mod0 <- coef(summary(mod0))$cond
       
-     
+      
       ## this is only written for one fixed effect!!!!!
       pvalyr0[[ii]] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
       
