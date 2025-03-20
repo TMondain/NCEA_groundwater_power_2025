@@ -91,7 +91,7 @@ for(i in 1:length(rvar)) {
   
   pl_nyr_x <- 
     ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
-           aes(noyear, fpower0, colour = factor(prop_cont))) +#, linetype = factor(days))) +
+           aes(noyear, fpower0, colour = factor(prop_cont))) +
     geom_line(size = 1) +
     geom_hline(yintercept = 70, linetype = "dashed") +
     geom_hline(yintercept = 80, linetype = "dashed") +
@@ -106,7 +106,7 @@ for(i in 1:length(rvar)) {
   
   pl_nsite_x <- 
     ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
-           aes(nosite.yr, fpower0, colour = factor(prop_cont))) + #, linetype =  factor(days))) +
+           aes(nosite.yr, fpower0, colour = factor(prop_cont))) +
     geom_line(size = 1) +
     geom_hline(yintercept = 70, linetype = "dashed") +
     geom_hline(yintercept = 80, linetype = "dashed") +
@@ -151,7 +151,7 @@ for(i in 1:length(rvar)) {
   
   pl_nyr_x <- 
     ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
-           aes(noyear, fpower0, colour = factor(effect.size))) +# , linetype = factor(effect.size))) +
+           aes(noyear, fpower0, colour = factor(effect.size))) +
     geom_line(size = 1) +
     geom_hline(yintercept = 70, linetype = "dashed") +
     geom_hline(yintercept = 80, linetype = "dashed") +
@@ -161,34 +161,12 @@ for(i in 1:length(rvar)) {
     xlab("Number of years") +
     ylab("Power (% significant results)") +
     scale_colour_manual(values =  viridis::viridis(6)[c(1,3,4)],
-                        name = "Effect size") #,
-                        # name = "Repeat sampling cycle") +
-    # scale_linetype(name = "Within-year\nrepeat sampling")
-  
-  
-  # pl_nsite_x <- 
-  #   ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
-  #          aes(nosite.yr, fpower0, colour = factor(samfreq), linetype =  factor(days))) +
-  #   geom_line(size = 1) +
-  #   geom_hline(yintercept = 70, linetype = "dashed") +
-  #   geom_hline(yintercept = 80, linetype = "dashed") +
-  #   facet_grid(effect.size~noyear, 
-  #              labeller = "label_both") +
-  #   ggtitle(paste(rvar[i])) +
-  #   xlab("Number of sites per year") +
-  #   ylab("Power (% significant results)") +
-  #   scale_colour_manual(values =  viridis::viridis(5)[c(1:4)],
-  #                       name = "Repeat sampling cycle") +
-  #   scale_linetype(name = "Within-year\nrepeat sampling")  
-  # 
+                        name = "Effect size") 
+
   
   ggsave(pl_nyr_x, 
          filename = paste0("outputs/plots/water_temp/", rvar[i], "number_years_x-axis.png"),
          width = 14, height = 6)
-  
-  # ggsave(pl_nsite_x, 
-  #        filename = paste0("outputs/plots/water_quality/", rvar[i], "number_site_per_year_x-axis.png"),
-  #        width = 8, height = 6)
   
 }
 
@@ -229,14 +207,7 @@ for(i in 1:length(rvar)) {
     scale_colour_manual(values =  viridis::viridis(10),
                         name = "Number sites per year")
   
-  # +
-    # xlab("Number of years") +
-    # ylab("Power (% significant results)") +
-    # scale_colour_manual(values =  viridis::viridis(5))#[c(1:4)])#,
-                        # name = "Repeat sampling cycle") +
-    # scale_linetype(name = "Within-year\nrepeat sampling")
-  
-  
+
   pl_nsite_x <- 
     ggplot(pwr[pwr$resp_var_clean == rvar[i],], 
           aes(nosite.yr, fpower0, colour = factor(noyear), linetype = factor(samfreq))) +

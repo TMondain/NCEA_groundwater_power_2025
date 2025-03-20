@@ -429,7 +429,6 @@ water_level_power_analysis <- function(
   
   fpower0 <- run_power(simulated_data = comb_dat, 
                        nsim = nsim, 
-                       # model_pars = model_pars, 
                        random_effect = random_effect, 
                        fixed_effect = fixed_effect, 
                        effect.size = effect.size)
