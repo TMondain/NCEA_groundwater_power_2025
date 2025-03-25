@@ -10,7 +10,7 @@ require(ggplot2)
 require(truncdist)
 
 
-water_level_power_analysis <- function(
+run_power_analysis <- function(
     datasets, # one or more datasets
     # dataset_dip,
     # dataset_telem,
