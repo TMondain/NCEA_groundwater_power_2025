@@ -14,9 +14,11 @@ water_level_power_analysis <- function(
     dataset_dip,
     dataset_telem,
     sample_column = NULL,
+    site_column,
     model_pars,
     random_effect,
-    days,# number of sampling occasions per year, 1 if annual, 12 if monthly
+    yearly_samfreq,# number of sampling occasions per year, 1 if annual, 12 if monthly
+    yearly_samfreq_column_name,
     response_var,
     effect.size,
     nsim,
@@ -28,9 +30,9 @@ water_level_power_analysis <- function(
   
   # submitting >1 dataset
   dataset = paste("data/processed/dip_data_mn_5yrperc_change.csv", 
-                  "data/processed/dip_data_5_95quantile_summary.csv", sep = ";")
+                  "data/processed/site_data_mn_5yrperc_change.csv", sep = ";")
   
-  strsplit(dataset, ";")[[1]]
+  # strsplit(dataset, ";")[[1]]
   
   
   if(inherits(dataset, "character")) {
@@ -44,12 +46,6 @@ water_level_power_analysis <- function(
     stop("! 'dataset' must be of class 'character', 'list' or 'data.frame'")
   }
   
-  # #### read file - remove this?
-  # if(inherits(dataset_dip, "character"))
-  #   dataset_dip <- read.csv(dataset_dip)
-  # 
-  # if(inherits(dataset_telem, "character"))
-  #   dataset_telem <- read.csv(dataset_telem)
   
   # sort out parameters
   if(grepl(";", model_pars))
@@ -57,6 +53,9 @@ water_level_power_analysis <- function(
   
   if(grepl(";", random_effect))
     random_effect <- strsplit(random_effect, ";")[[1]]
+  
+  if(grepl(";", prop_cont))
+    prop_cont <- as.numeric(strsplit(prop_cont, ";")[[1]])
   
   # convert these to as.character
   if(!is.null(sample_column))
@@ -66,26 +65,12 @@ water_level_power_analysis <- function(
   
   
   #### sample ------------------------------------------------------------------
-  ## need to change the code to work with only one dataset!!!
-  ## change it to be one input with a ";" separated character of data locations - 
-  ## then strsplit to create a list
-  ## then lapply() through the datasets to read and create list of dataframes!!!
-  # if(!is.null(sample_column)){
-  #   dipsamp <- dataset_dip[dataset_dip[,sample_column] == 1,]
-  #   telemsamp <- dataset_telem[dataset_telem[,sample_column] == 1,]
-  # }else{
-  #   dipsamp <- dataset_dip
-  #   telemsamp <- dataset_telem
-  # }
-  # 
-  # # combine into single list?
-  # dats_list <- list(dipsamp, telemsamp)
   
-  # loop through and sample
+  # loop through datasets and sample
   if(!is.null(sample_column)) {
     dats_list <- lapply(dats_list, function(x) {
       x[x[,sample_column] == 1,]
-      })
+    })
   }
   
   
@@ -112,8 +97,8 @@ water_level_power_analysis <- function(
     
     # extract model parameters
     ## intercept mean and standard error
-    intval <- data.frame(summary(mod)$coefficients$cond)$Estimate #0.878
-    intsd <- data.frame(summary(mod)$coefficients$cond)$Std..Error #0.026
+    intval <- data.frame(summary(mod)$coefficients$cond)$Estimate 
+    intsd <- data.frame(summary(mod)$coefficients$cond)$Std..Error
     
     # extract model standard deviation for the covariates
     mod_paramvals <- lapply(model_covs, function(x) 
@@ -146,43 +131,50 @@ water_level_power_analysis <- function(
   # create the template dataframe ------------------------------------------------
   # - this is the same for every simulation 
   
-  create_sim_df <- function(samfreq = 1, nosite.yr, noyear, days) {
+  create_sim_df <- function(samfreq = 1, # between-year sample frequency
+                            nosite.yr, 
+                            noyear,
+                            site_column = "site", # `character` name of the site column
+                            yearly_samfreq, # `numeric` within year sampling frequency
+                            yearly_samfreq_column = "days") { # name of yearly samfreq model parameter
     
     if (noyear >= samfreq) nosite = nosite.yr * samfreq else {
       samfreq <- noyear
       nosite = nosite.yr * samfreq 
     } 
+    
     thin.id <- paste(rep(1:nosite,floor(noyear/samfreq)),
                      rep(1:noyear,each=floor(nosite/samfreq)),sep="_")
     
     data.temp <- expand.grid(site=1:nosite, year=1:noyear)
-    data.temp$site.yr <- paste(data.temp$site, data.temp$year, sep="_")
+    colnames(data.temp) <- c(site_column, "year")
+    data.temp$site.yr <- paste(data.temp[, site_column], data.temp$year, sep="_")
     data0 <- data.temp[is.element(data.temp$site.yr,thin.id),]
     
     expanded_data <- data.frame()
     #loop over each site-year combination
     for (zz in 1:nrow(data0)) {
-      site <- data0$site[zz]
+      site <- data0[,site_column][zz]
       year <- data0$year[zz]
       site_yr <- data0$site.yr[zz]
       
-      # #the number of days for this site-year
-      # days <- scenarios$days[ss]
-      
       #unique days from the available days in a year
-      unique_days <- 1:days
+      unique_days <- 1:yearly_samfreq
       
       #loop over each day for the current site-year
       for (day in unique_days) {
         
         #samples collected on the same date (within the same season and year) share a common parameter
         #samples collected during the same season share a common seasonal parameter
+        day_dat <- data.frame(site = site,
+                              year = year,
+                              site_yr = site_yr,
+                              day = day,
+                              date=paste(year, day, sep="_"))
+        colnames(day_dat) <- c(site_column, "year", "site_yr", yearly_samfreq_column , "date")
+        
         expanded_data <- rbind(expanded_data, 
-                               data.frame(site = site,
-                                          year = year,
-                                          site_yr = site_yr,
-                                          day = day,
-                                          date=paste(year, day, sep="_")))
+                               day_dat)
       }
     }
     
@@ -192,15 +184,19 @@ water_level_power_analysis <- function(
   
   expanded_data <- create_sim_df(samfreq = samfreq, 
                                  nosite.yr = nosite.yr, 
+                                 site_column = site_column,
                                  noyear = noyear, 
-                                 days = days)
+                                 yearly_samfreq = yearly_samfreq,
+                                 yearly_samfreq_column = yearly_samfreq_column)
   
-  if("month" %in% model_pars)
-    # add month
-    expanded_data$month <- expanded_data$day 
+  head(expanded_data)
   
-  if("sampling_point" %in% model_pars)
-    expanded_data$sampling_point <- expanded_data$site
+  # if("month" %in% model_pars)
+  #   # add month
+  #   expanded_data$month <- expanded_data$day 
+  # 
+  # if("sampling_point" %in% model_pars)
+  #   expanded_data$sampling_point <- expanded_data$site
   
   # View the first few rows of the expanded data
   head(expanded_data)
@@ -213,22 +209,58 @@ water_level_power_analysis <- function(
   
   message("! altering dataset proportions")
   
-  ## could write this to work for any number of datasets
-  if(length(dats_list)>1) {
+  # ## could write this to work for any number of datasets
+  # if(length(dats_list)>1) {
+  #   
+  #   # calculate number of sites to sample
+  #   nsite_dat2 <- round(nosite.yr*prop_cont)
+  #   nsite_dat1 <- nosite.yr-nsite_dat2
+  #   
+  #   nsites <- c(nsite_dat1, nsite_dat2)
+  #   
+  #   expanded_datlist <- lapply(nsites, function(x){
+  #     
+  #     smpsits <- sample(unique(expanded_data[,site_column]), size = x)
+  #     expanded_data[expanded_data[,site_column] %in% smpsits,]
+  #     
+  #   })
+  # }
+
+  alter_dat_proportions <- function(dats_list,
+                                    prop_cont,
+                                    nosite.yr) {
     
-    # calculate number of sites to sample
-    nsite_dat2 <- round(nosite.yr*prop_cont)
-    nsite_dat1 <- nosite.yr-nsite_dat2
-    
-    nsites <- c(nsite_dat1, nsite_dat2)
+    if(length(dats_list) == length(prop_cont)) {
+      
+      nsites <- prop_cont*nosite.yr
+      
+    } else if(length(dats_list) != length(prop_cont) & 
+              length(dats_list) == 2 &
+              length(prop_cont) == 1) {
+      
+      # calculate number of sites to sample
+      nsite_dat2 <- round(nosite.yr*prop_cont)
+      nsite_dat1 <- nosite.yr-nsite_dat2
+      nsites <- c(nsite_dat1, nsite_dat2)
+      
+    } else {
+      stop(paste("! 'prop_cont' must be same length as number of datasets, or has length '1'"))
+    }
     
     expanded_datlist <- lapply(nsites, function(x){
       
-      smpsits <- sample(unique(expanded_data$sampling_point), size = x)
-      expanded_data[expanded_data$sampling_point %in% smpsits,]
+      smpsits <- sample(unique(expanded_data[,site_column]), size = x)
+      expanded_data[expanded_data[,site_column] %in% smpsits,]
       
     })
+    
+    return(expanded_datlist)
+    
   }
+  
+  expanded_datlist <- alter_dat_proportions(dats_list = dats_list, 
+                                            prop_cont = prop_cont,
+                                            nosite.yr = nosite.yr)
   
   # I think this worked
   lapply(expanded_datlist, dim)
@@ -440,7 +472,7 @@ water_level_power_analysis <- function(
                      model_pars = paste(model_pars, collapse = "_"),
                      random_effect = paste(model_pars, collapse = "_"),
                      nsim, nosite.yr, noyear, effect.size, 
-                     days, samfreq, prop_cont,  fpower0)
+                     yearly_samfreq, samfreq, paste(prop_cont, collapse = "_"),  fpower0)
   
   
   if(!is.null(save_loc)){
@@ -451,7 +483,7 @@ water_level_power_analysis <- function(
               file = paste0(save_loc, "/", 
                             paste(response_var,  ifelse(!is.null(sample_column), sample_column, ""), 
                                   nsim, nosite.yr, noyear, effect.size, 
-                                  days, samfreq, prop_cont, sep = "_"), ".csv"))
+                                  yearly_samfreq, samfreq, paste(prop_cont, collapse = "_"), sep = "_"), ".csv"))
     
   }
   
