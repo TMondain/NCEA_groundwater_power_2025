@@ -27,7 +27,7 @@ pars <- expand.grid(response_var = c("water_level", "perc_chg_ind", "cent_5_valu
                     nosite.yr = seq(100, 600, by = 100),
                     site_column = "sampling_point",
                     noyear = c(5, 10, 20, 25),
-                    prop_cont = c(0.2, 0.5, 0.8, 1),
+                    data_proportions = c(0.2, 0.5, 0.8, 1),
                     effect.size = c(0.001, 0.002, 0.01),
                     samfreq = 1,
                     save_loc = "data/simulations/power/water_level")

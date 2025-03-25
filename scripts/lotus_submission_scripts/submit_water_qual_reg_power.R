@@ -30,7 +30,7 @@ scenarios <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/d
 
 pars <- scenarios %>% 
   mutate(nosite.yr = nosite,
-         prop_cont = 0,
+         data_proportions = 0,
          nsim = 100,
          dataset_dip = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/WaterQual_data_type.csv",
          dataset_telem = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/WaterQual_data_type.csv",

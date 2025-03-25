@@ -29,7 +29,7 @@ scenarios <- read.csv("data/scenarios/WTmp_Scenarios.csv")
 pars <- scenarios %>% 
   mutate(response_var = "response",
          nosite.yr = nosite,
-         prop_cont = 0,
+         data_proportions = 0,
          nsim = 100,
          dataset_dip = "data/raw/GW_temp_data.csv",
          dataset_telem = "data/raw/GW_temp_data.csv",
