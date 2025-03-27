@@ -247,6 +247,8 @@ run_power <- function(simulated_data, # a list of dataframes, one for each simul
   #figure out how to extract parameters for multiple fixed effects
   pvalyr0 <- sign.ts <- rep(NA,nsim)
   
+  is_signif <- list()
+  
   fpower0 <- rep(NA,nsim)
   
   #results will be stored here
@@ -270,16 +272,44 @@ run_power <- function(simulated_data, # a list of dataframes, one for each simul
     coef.mod0 <- coef(summary(mod0))$cond
     
     
-    ## this is only written for one fixed effect!!!!!
-    pvalyr0[[ii]] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
+    # ## this is only written for one fixed effect!!!!!
+    # pvalyr0[[ii]] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
+    # 
+    # sign.ts[[ii]] <- sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)=="year",
+    #                                                    colnames(coef.mod0)=="Estimate"])
+    # 
+    # fixed_effect
     
-    sign.ts[[ii]] <- sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)=="year",
-                                                       colnames(coef.mod0)=="Estimate"])
+    # get pvalues for >1 fixed effect
+    p_vals <- lapply(fixed_effect, function(x) {
+      coef.mod0[rownames(coef.mod0)==x,colnames(coef.mod0)=="Pr(>|z|)"]
+    })
+    
+    # get sign for >1 fixed effect
+    signs <- lapply(fixed_effect, function(x) {
+      sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)==x,
+                                        colnames(coef.mod0)=="Estimate"])
+    })
+    
+    #is signif?
+    is_signif[[ii]] <- lapply(1:length(fixed_effect), function(x) {
+      p_vals[[x]]<0.05 & !is.na(p_vals[[x]]) & signs[[x]]
+    })
     
   }
   
-  fpower0 <- length(which(pvalyr0<0.05 & !is.na(pvalyr0) & sign.ts))*100/length(sort(pvalyr0))
+  # fixed_effect
   
-  return(fpower0)
+  # calculate power for many fixed effects
+  power_outs_fe <- lapply(1:length(fixed_effect), function(x) {
+    sum(unlist(lapply(is_signif, function(i) i[[x]]))) * 100/nsim
+  })
+  
+  fpower <- do.call(cbind.data.frame, power_outs_fe)  
+  colnames(fpower) <- paste0(fixed_effect, "_fpower")
+
+  # fpower0 <- length(which(pvalyr0<0.05 & !is.na(pvalyr0) & sign.ts))*100/length(sort(pvalyr0))
+  
+  return(fpower)
   
 }

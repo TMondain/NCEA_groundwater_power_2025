@@ -203,7 +203,8 @@ run_power_analysis <- function(
     dir.create(save_loc, recursive = TRUE)
     write.csv(outs, 
               file = paste0(save_loc, "/", 
-                            paste(response_var,  ifelse(!is.null(sample_column), sample_column, ""), 
+                            paste(response_var, paste(fixed_effect, collapse = "_"),
+                                  ifelse(!is.null(sample_column), sample_column, ""), 
                                   nsim, nosite.yr, noyear, effect.size, 
                                   yearly_samfreq, samfreq, paste(data_proportions, collapse = "_"), sep = "_"), ".csv"))
     
