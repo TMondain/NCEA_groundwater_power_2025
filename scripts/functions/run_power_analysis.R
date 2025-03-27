@@ -19,7 +19,7 @@ run_power_analysis <- function(
     model_pars,
     random_effect,
     yearly_samfreq,# number of sampling occasions per year, 1 if annual, 12 if monthly
-    yearly_samfreq_column,
+    yearly_samfreq_column = "days",
     response_var,
     effect.size,
     nsim,
@@ -28,6 +28,9 @@ run_power_analysis <- function(
     noyear,
     data_proportions = NULL,
     save_loc) {
+  
+  if(any(!random_effect %in% model_pars))
+    stop("! All 'random_effect' must be found in 'model_pars'")
   
   
   if(inherits(datasets, "character")) {
@@ -141,9 +144,10 @@ run_power_analysis <- function(
       
     }
   } else {
-    expanded_datlist <- list(expanded_data)
+    
+    expanded_datlist <- lapply(1:length(dats_list), function(x) expanded_data)
+    
   }
-  
   
   #### simulation ----------------------------------------------------------------
   
