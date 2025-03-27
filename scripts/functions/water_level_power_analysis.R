@@ -19,14 +19,14 @@ run_power_analysis <- function(
     model_pars,
     random_effect,
     yearly_samfreq,# number of sampling occasions per year, 1 if annual, 12 if monthly
-    yearly_samfreq_column,
+    yearly_samfreq_column_name,
     response_var,
     effect.size,
     nsim,
     samfreq,
     nosite.yr, # number of sites sampled per year across all datasets
     noyear,
-    data_proportions = NULL,
+    data_proportions,
     save_loc) {
   
   
@@ -43,23 +43,20 @@ run_power_analysis <- function(
   
   
   # sort out parameters
-  if(any(grepl(";", model_pars)))
+  if(grepl(";", model_pars))
     model_pars <- strsplit(model_pars, ";")[[1]]
   
-  if(any(grepl(";", random_effect)))
+  if(grepl(";", random_effect))
     random_effect <- strsplit(random_effect, ";")[[1]]
   
-  if(any(grepl(";", data_proportions)))
+  if(grepl(";", data_proportions))
     data_proportions <- as.numeric(strsplit(data_proportions, ";")[[1]])
   
   # convert these to as.character
   if(!is.null(sample_column))
     sample_column <- as.character(sample_column)
-  
-  if(!is.null(save_loc))
-    save_loc <- as.character(save_loc)
-  
   response_var <- as.character(response_var)
+  save_loc <- as.character(save_loc)
   
   
   #### sample ------------------------------------------------------------------
@@ -75,6 +72,7 @@ run_power_analysis <- function(
   #### initial model -----------------------------------------------------------
   model_para_vals <- lapply(dats_list, function(x)
     get_model_pars(dat = x, response = response_var, model_covs = model_pars))
+  
   
   
   # create the template dataframe ------------------------------------------------
@@ -124,8 +122,6 @@ run_power_analysis <- function(
     
     expanded_datlist <- alter_dat_proportions(dats_list = dats_list, 
                                               data_proportions = data_proportions,
-                                              template_data = expanded_data,
-                                              site_column = site_column,
                                               nosite.yr = nosite.yr)
     
     # I think this worked
@@ -141,7 +137,7 @@ run_power_analysis <- function(
       
     }
   } else {
-    expanded_datlist <- list(expanded_data)
+    expanded_datlist <- dats_list
   }
   
   
@@ -153,7 +149,6 @@ run_power_analysis <- function(
   simdat_list <- lapply(1:length(model_para_vals), function(i) 
     simdat <- simulate_data(template_dat = expanded_datlist[[i]],
                             model_params = model_para_vals[[i]],
-                            tslope = effect.size,
                             nsim = nsim,
                             model_pars = model_pars)
   )

@@ -105,6 +105,8 @@ create_sim_df <- function(samfreq = 1, # between-year sample frequency
 # alter proportion of data
 alter_dat_proportions <- function(dats_list,
                                   data_proportions,
+                                  template_data,
+                                  site_column,
                                   nosite.yr) {
   
   if(length(dats_list) == length(data_proportions)) {
@@ -126,8 +128,8 @@ alter_dat_proportions <- function(dats_list,
   
   expanded_datlist <- lapply(nsites, function(x){
     
-    smpsits <- sample(unique(expanded_data[,site_column]), size = x)
-    expanded_data[expanded_data[,site_column] %in% smpsits,]
+    smpsits <- sample(unique(template_data[,site_column]), size = x)
+    template_data[template_data[,site_column] %in% smpsits,]
     
   })
   
@@ -140,14 +142,15 @@ alter_dat_proportions <- function(dats_list,
 #### simulate data according to templates
 simulate_data <- function(template_dat,
                           model_params,
+                          tslope,
                           nsim = 100, 
                           model_pars){
   
   
-  #effect.size 
-  #note: here I tested whether there is a difference when simulating positive or negative effect sizes,  
-  #but there is no difference in the results. So, only simulating the negative effect
-  tslope <- effect.size
+  # #effect.size 
+  # #note: here I tested whether there is a difference when simulating positive or negative effect sizes,  
+  # #but there is no difference in the results. So, only simulating the negative effect
+  # tslope <- effect.size
   
   data_out <- list()
   
@@ -183,9 +186,8 @@ simulate_data <- function(template_dat,
               mean=0, 
               sd=model_params[model_pars[i]])
       
-      dat_out <- cbind(unique_levels, int_with_var)  
+      dat_out <- data.frame(unique_levels, int_with_var)  
       colnames(dat_out) <- c(model_pars[i], "int_with_var")
-      
       dat_out
       
     })
