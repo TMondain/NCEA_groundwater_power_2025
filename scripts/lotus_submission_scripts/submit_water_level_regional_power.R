@@ -113,8 +113,49 @@ sjob <- slurm_apply(run_power_analysis,
                                          mem = "10000",
                                          output = "pwr_%a.out",
                                          error = "pwr_%a.err"),
+                    global_objects = c(c(lsf.str())),
                     sh_template = "jasmin_submit_sh.txt")
 
+
+
+
+### testing
+
+rwind = 499
+
+
+cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {
+  for(i in 1:ncol(param_df)) {
+    assign(colnames(param_df)[i], c(param_df[rownums, i]), envir = envir)
+  }
+}
+
+cols2vectors(pars, rwind)
+
+
+
+# # check which sample columns have no data associated with them
+# ### I can't be bothered to code this. Just accept that some will fail
+# dats_to_run <- unique(pars$datasets)
+# 
+# datasets <- unlist(lapply(dats_to_run, function(x) strsplit(x, ";")[[1]]))
+# 
+# dats_list <- lapply(datasets, read.csv)
+# 
+# sampl_col <- unique(pars$sample_column)
+# 
+# lapply(dats_list, function(x) {
+#   
+#   lapply(1:length(sampl_col), function(i) {
+#     df <- x[which(x[,sampl_col[i]] == 1),]
+#     
+#     ## need to use the correct response variable too!!!
+#     ## COMPLICATED :(
+#     
+#   })
+#   
+# }
+# )
 
 
 
@@ -169,19 +210,6 @@ sjob <- slurm_apply(run_power_analysis,
 # View(pars)
 
 
-
-### testing
-
-rwind = 292
-
-
-cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {
-  for(i in 1:ncol(param_df)) {
-    assign(colnames(param_df)[i], c(param_df[rownums, i]), envir = envir)
-  }
-}
-
-cols2vectors(pars, rwind)
 
 
 # pwr <- power_analysis(data_location = pars$data_location[rwind],

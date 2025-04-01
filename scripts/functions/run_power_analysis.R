@@ -70,14 +70,28 @@ run_power_analysis <- function(
   # loop through datasets and sample
   if(!is.null(sample_column)) {
     dats_list <- lapply(dats_list, function(x) {
-      x[x[,sample_column] == 1,]
+      x[which(x[,sample_column] == 1),]
     })
   }
+  
+  # check to make sure there are non-NA and non-inf values
+  if(any(unlist(lapply(1:length(dats_list), function(x) 
+    !any(is.finite(na.omit(dats_list[[x]][,response_var])))))))
+    stop("! There are no useable (non NA and non-inf) values in dataset number ", which(unlist(lapply(1:length(dats_list), function(x) 
+      !any(is.finite(na.omit(dats_list[[x]][,response_var])))))),
+      "\nCheck that the sample column '", sample_column, "' has useable data associated with it")
   
   
   #### initial model -----------------------------------------------------------
   model_para_vals <- lapply(dats_list, function(x)
     get_model_pars(dat = x, response = response_var, model_covs = model_pars))
+  
+  # check that all worked
+  isna <- lapply(model_para_vals, is.na)
+  
+  if(any(unlist(lapply(isna, any))))
+    stop("! The model for dataset ", which(unlist(lapply(isna, any))), " has no value estimated for one of the parameters (convergence issue?). 
+         \n Stopping because cannot simulate based on model that hasn't estimated all parameters.")
   
   
   # create the template dataframe ------------------------------------------------
