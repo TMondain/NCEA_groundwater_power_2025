@@ -1,4 +1,4 @@
-# running water temp power submits pc
+# running water qual NEW power submits pc
 
 # submit power analysis to lotus 
 rm(list = ls())
@@ -26,7 +26,7 @@ source("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/scripts/function
 
 wqdf <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/raw/WaterQual_data_type.csv")
 
-scenarios <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/scenarios/N_scenarios_reg.csv")
+scenarios <- read.csv("/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/scenarios/N_scenarios_reg_NEW.csv")
 
 
 pars <- scenarios %>% 
@@ -41,7 +41,7 @@ pars <- scenarios %>%
          effect.size = eff,
          yearly_samfreq = days,
          samfreq = freq,
-         save_loc = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/water_qual_reg")
+         save_loc = "/gws/nopw/j04/ceh_generic/thoval/ncea/groundwater_power/data/simulations/power/water_qual_reg_NEW")
 
 pars$nosite <- NULL
 pars$prox <- NULL
@@ -50,7 +50,7 @@ pars$freq <- NULL
 pars$eff <- NULL
 pars$days <- NULL
 
-response_var = c("gw0117_value", "gw0172_value")
+response_var = grep("_value", colnames(wqdf), value = TRUE) #c("gw0117_value", "gw0172_value")
 
 wqdf$type <- NULL
 sample_column = grep("type", colnames(wqdf), value = TRUE)
@@ -76,12 +76,13 @@ pars$response_var <- as.character(pars$response_var)
 pars$save_loc <- as.character(pars$save_loc)
 
 
+
 # View(pars)
 
 # submit
-sjob <- slurm_apply(water_level_power_analysis, 
+sjob <- slurm_apply(run_power_analysis, 
                     pars, 
-                    jobname = "ncea_pwr_qual_reg",
+                    jobname = "NEW_qual_ncea_pwr_qual_reg",
                     nodes = nrow(pars),
                     cpus_per_node = 1, 
                     submit = TRUE,
@@ -92,6 +93,7 @@ sjob <- slurm_apply(water_level_power_analysis,
                                          mem = "10000",
                                          output = "pwr_%a.out",
                                          error = "pwr_%a.err"),
+                    global_objects = c(c(lsf.str())),
                     sh_template = "jasmin_submit_sh.txt")
 
 
@@ -101,7 +103,7 @@ sjob <- slurm_apply(water_level_power_analysis,
 
 ### testing
 
-rwind = 1
+rwind = 904
 
 
 cols2vectors <- function(param_df, rownums, envir = .GlobalEnv) {

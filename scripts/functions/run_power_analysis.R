@@ -29,9 +29,6 @@ run_power_analysis <- function(
     data_proportions = NULL,
     save_loc) {
   
-  if(any(!random_effect %in% model_pars))
-    stop("! All 'random_effect' must be found in 'model_pars'")
-  
   
   if(inherits(datasets, "character")) {
     message("! reading datasets")
@@ -43,7 +40,6 @@ run_power_analysis <- function(
   } else {
     stop("! 'datasets' must be of class 'character', 'list' or 'data.frame'")
   }
-  
   
   # sort out parameters
   if(any(grepl(";", model_pars)))
@@ -63,6 +59,10 @@ run_power_analysis <- function(
     save_loc <- as.character(save_loc)
   
   response_var <- as.character(response_var)
+  
+  
+  if(any(!random_effect %in% model_pars))
+    stop("! All 'random_effect' must be found in 'model_pars'")
   
   
   #### sample ------------------------------------------------------------------

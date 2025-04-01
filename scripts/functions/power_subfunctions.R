@@ -223,7 +223,7 @@ simulate_data <- function(template_dat,
     
     # Simulating values
     template_dat$g.values <- sapply(1:nrow(template_dat), function(i) {
-      rtrunc(1, spec = "gamma", a = 1e-6, shape = g.shape, scale = g.scale[i])
+      rtrunc(1, spec = "gamma", a = 1e-100, shape = g.shape, scale = g.scale[i])
     })
     
     data_out[[ii]] <- template_dat[,c("g.values", model_pars)]

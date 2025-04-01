@@ -11,6 +11,60 @@ head(dip)
 head(site)
 
 
+#### Add rock type -------------------------------------------------------------
+diptype <- read.csv("data/raw/dip_data_type.csv")
+
+# sort column issue out
+diptype$X.1 <- NULL
+orig.cols <- colnames(diptype)
+new.cols <- c(orig.cols[-1], "geometry2")
+colnames(diptype) <- new.cols
+
+head(diptype)
+head(dip)
+
+diptype_sub <- diptype %>% 
+  dplyr::select(station_number,
+                grep("Dominant_g", colnames(diptype), value = TRUE)) %>% 
+  distinct()
+
+diptype_sub$Dominant_g <- NULL
+
+head(diptype_sub)
+
+dip <- left_join(dip, diptype_sub, by = c("station_number"))
+
+# colnames(dip) <- gsub("Dominant_g", "", colnames(dip))
+
+## some sites aren't in the diptype data
+dip_stations = unique(dip$station_number)
+dip_stations[!dip_stations %in% diptype$station_number]
+
+write.csv(dip_stations[!dip_stations %in% diptype$station_number],
+          file = "data/dip_stations_no_type.csv")
+
+## site type
+sitetype <- read.csv("data/raw/tele_data_type.csv")
+head(sitetype)
+
+sitetype_sub <- sitetype %>% 
+  dplyr::select(station_number,
+                grep("Type", colnames(sitetype), value = TRUE)) %>% 
+  distinct()
+
+head(sitetype_sub)
+
+site <- left_join(site, sitetype_sub, by = c("station_number"))
+
+
+## some sites aren't in the diptype data
+site_stations = unique(site$station_number)
+site_stations[!site_stations %in% sitetype$station_number]
+
+write.csv(site_stations[!site_stations %in% sitetype$station_number],
+          file = "data/tele_stations_no_type.csv")
+
+
 # remove negative values
 dip <- dip[dip$water_level >= 0,]
 
@@ -127,6 +181,7 @@ hist(dip$perc_chg_ind)
 hist(dip$perc_chg_ind[dip$perc_chg_ind<500])
 
 
+
 ## site
 # check how many years per site?
 site %>% 
@@ -160,6 +215,7 @@ hist(site$perc_chg)
 hist(site$perc_chg[site$perc_chg<500])
 
 
+
 #### Step 2: calculate mean, 5th and 95th centile ---------------------------------------------
 
 ## dip data
@@ -168,12 +224,15 @@ head(dip)
 
 dip_quantsum <- dip %>% 
   mutate(sampling_point = station_number) %>% 
-  dplyr::group_by(sampling_point, easting, northing, year) %>% 
+  dplyr::group_by(sampling_point, easting, northing, year, 
+                  across(all_of(grep("Dominant_g", colnames(dip), value = TRUE)))) %>% 
   dplyr::summarise(cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
                    cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE))
 
 # add sampled column again
 dip_quantsum$sampled_20 <- ifelse(dip_quantsum$sampling_point %in% sampdip$station_number, 1, 0)
+
+
 
 ## site data
 hist(site$water_level)
@@ -184,12 +243,25 @@ head(site)
 
 site_quantsum <- site %>% 
   mutate(sampling_point = station_number) %>% 
-  dplyr::group_by(sampling_point, easting, northing, year) %>% 
+  dplyr::group_by(sampling_point, easting, northing, year, 
+                  across(all_of(grep("Type_", colnames(site), value = TRUE)))) %>% 
   dplyr::summarise(cent_5_value = quantile(water_level, probs = 0.05, na.rm = TRUE),
                    cent_95_value = quantile(water_level, probs = 0.95, na.rm = TRUE))
 
 # add sampled column again
 site_quantsum$sampled_20 <- ifelse(site_quantsum$sampling_point %in% sampsite, 1, 0)
+
+# change column names
+colnames(dip) <- gsub("Dominant_g", "sampledtype_", colnames(dip))
+colnames(dip_quantsum) <- gsub("Dominant_g", "sampledtype_", colnames(dip_quantsum))
+colnames(site) <- gsub("Type_", "sampledtype_", colnames(site))
+colnames(site_quantsum) <- gsub("Type_", "sampledtype_", colnames(site_quantsum))
+
+
+colnames(dip)
+colnames(dip_quantsum)
+colnames(site)
+colnames(site_quantsum)
 
 
 ## save
