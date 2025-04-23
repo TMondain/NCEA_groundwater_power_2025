@@ -1,19 +1,37 @@
 
-require(readxl)
-require(extraDistr)
-require(EnvStats)
-require(glmmTMB)
-require(crayon)
-require(gdata)
-require(truncnorm)
-require(ggplot2)
-require(truncdist)
-
+#' Run a Power Analysis Using Simulated Data from Multiple Datasets
+#'
+#' Simulates ecological datasets based on user-defined parameters and performs a power analysis using GLMMs. Returns the proportion of significant results for each fixed effect.
+#'
+#' @param datasets A character string (semicolon-separated file paths), list of data frames, or a single data frame. These datasets provide the basis for parameter extraction and simulation.
+#' @param sample_column Character. Name of a column used to subset datasets before simulation (optional; default is `NULL`).
+#' @param site_column Character. Name of the column identifying unique sites.
+#' @param model_pars Character vector or semicolon-separated string. Variables to include as predictors in the model.
+#' @param random_effect Character vector or semicolon-separated string. Subset of `model_pars` that are to be treated as random effects.
+#' @param yearly_samfreq Integer. Number of sampling occasions per year (e.g., 1 for annual, 12 for monthly; no default).
+#' @param yearly_samfreq_column Character. Name of the column representing sampling frequency (default is `"days"`).
+#' @param response_var Character. Name of the response variable to be modeled.
+#' @param effect.size Numeric vector. True effect sizes for fixed effects (must match length of `fixed_effect` !! not yet coded !!; no default).
+#' @param nsim Integer. Number of simulations to perform.
+#' @param samfreq Integer. Number of total samples per site over the full study period.
+#' @param nosite.yr Integer. Total number of unique sites sampled per year across all datasets.
+#' @param noyear Integer. Number of years in the study period.
+#' @param data_proportions Numeric vector or semicolon-separated string. Proportions of total sites assigned to each dataset (optional; default is `NULL`).
+#' @param save_loc Character. Directory path to save the output CSV file (optional; default is `NULL`).
+#'
+#' @return A data frame summarizing power analysis results, including input parameters and the proportion of simulations where fixed effects were significant and correctly signed.
+#'
+#' @details
+#' This function reads or accepts datasets, extracts model parameters using `get_model_pars`, builds a simulation template using `create_sim_df`, simulates datasets using `simulate_data`, and then runs a power analysis using `run_power`.
+#'
+#' The analysis assumes a Gamma-distributed response and uses the `glmmTMB` package for model fitting.
+#'
+#' @import readxl extraDistr EnvStats glmmTMB crayon gdata truncnorm ggplot2 truncdist
+#'
+#' @export
 
 run_power_analysis <- function(
     datasets, # one or more datasets
-    # dataset_dip,
-    # dataset_telem,
     sample_column = NULL,
     site_column,
     model_pars,
@@ -28,6 +46,17 @@ run_power_analysis <- function(
     noyear,
     data_proportions = NULL,
     save_loc) {
+  
+  
+  require(readxl)
+  require(extraDistr)
+  require(EnvStats)
+  require(glmmTMB)
+  require(crayon)
+  require(gdata)
+  require(truncnorm)
+  require(ggplot2)
+  require(truncdist)
   
   
   if(inherits(datasets, "character")) {
@@ -102,14 +131,6 @@ run_power_analysis <- function(
                                  yearly_samfreq = yearly_samfreq,
                                  yearly_samfreq_column = yearly_samfreq_column)
   
-  
-  # if("month" %in% model_pars)
-  #   # add month
-  #   expanded_data$month <- expanded_data$day 
-  # 
-  # if("sampling_point" %in% model_pars)
-  #   expanded_data$sampling_point <- expanded_data$site
-  
   # View the first few rows of the expanded data
   head(expanded_data)
   length(unique(expanded_data$site))
@@ -121,23 +142,6 @@ run_power_analysis <- function(
   
   if(!is.null(data_proportions)){
     message("! altering dataset proportions")
-    
-    # ## could write this to work for any number of datasets
-    # if(length(dats_list)>1) {
-    #   
-    #   # calculate number of sites to sample
-    #   nsite_dat2 <- round(nosite.yr*data_proportions)
-    #   nsite_dat1 <- nosite.yr-nsite_dat2
-    #   
-    #   nsites <- c(nsite_dat1, nsite_dat2)
-    #   
-    #   expanded_datlist <- lapply(nsites, function(x){
-    #     
-    #     smpsits <- sample(unique(expanded_data[,site_column]), size = x)
-    #     expanded_data[expanded_data[,site_column] %in% smpsits,]
-    #     
-    #   })
-    # }
     
     expanded_datlist <- alter_dat_proportions(dats_list = dats_list, 
                                               data_proportions = data_proportions,
