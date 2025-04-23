@@ -188,7 +188,8 @@ alter_dat_proportions <- function(dats_list,
 #'
 #' @param template_dat Data frame template for simulation. Either the output of the `create_sim_df` function or `alter_dat_proportions`
 #' @param model_params Named vector of parameter values from `get_model_pars`.
-#' @param tslope Numeric. The effect size to simulate. Adds trend to `year` parameter.
+#' @param fixed_effect Character vector specifying the fixed effects. Must be same length as tslope.
+#' @param tslope Numeric. The effect size to simulate. Adds trend to each of the fixed effects.
 #' @param nsim Integer. Number of simulations to run. Defaults to 100.
 #' @param model_pars Character vector of model covariates.
 #'
@@ -199,6 +200,7 @@ alter_dat_proportions <- function(dats_list,
 #' # simulate_data(template, params, tslope = -0.2, nsim = 100, model_pars = c("site", "year"))
 simulate_data <- function(template_dat,
                           model_params,
+                          fixed_effect,
                           tslope,
                           nsim = 100, 
                           model_pars){
@@ -272,7 +274,32 @@ simulate_data <- function(template_dat,
     g.s2 <- model_params["sigma2"] #0.121
     
     #expected mean (mu)
-    template_dat$mu <- exp(template_dat$int + tslope * template_dat$year)
+    # if doing multiple fixed effects, would each effect be additive??
+    # i.e. would this work?
+    # fixed_effect <- model_pars[!model_pars %in% random_effect]
+    
+    # if(length(tslope) == 1) {
+    #   # NEED TO CHANGE THIS SO THAT you can specify a slope for any of the fixed effects and
+    #   # for all of them.
+    #   # I.e. if you want to specify trend for month but not year...
+    #   
+    #   message("!! Only one effect size specified,")
+    #   
+    # }
+    
+    if(length(tslope) != length(fixed_effect)) {
+      stop(paste("!! length of `effect_size` does not equal number of fixed effects"))
+    }
+    
+    # new:
+    trended_dat <- lapply(1:length(fixed_effect), function(x) {
+      tslope[x]*template_dat[,fixed_effect[x]]
+    })
+    trended_dat <- Reduce("+", trended_dat)
+    template_dat$mu <- exp(template_dat$int + trended_dat)
+    
+    #     # original:
+    # template_dat$mu <- exp(template_dat$int + tslope * template_dat$year)
     
     #Gamma parameters
     g.shape <- 1/g.s2

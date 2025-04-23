@@ -11,7 +11,7 @@
 #' @param yearly_samfreq Integer. Number of sampling occasions per year (e.g., 1 for annual, 12 for monthly; no default).
 #' @param yearly_samfreq_column Character. Name of the column representing sampling frequency (default is `"days"`).
 #' @param response_var Character. Name of the response variable to be modeled.
-#' @param effect.size Numeric vector. True effect sizes for fixed effects (must match length of `fixed_effect` !! not yet coded !!; no default).
+#' @param effect.size Numeric vector. True effect sizes for fixed effects (must match length of the fixed_effects specified; no default).
 #' @param nsim Integer. Number of simulations to perform.
 #' @param samfreq Integer. Number of total samples per site over the full study period.
 #' @param nosite.yr Integer. Total number of unique sites sampled per year across all datasets.
@@ -92,6 +92,7 @@ run_power_analysis <- function(
   if(any(!random_effect %in% model_pars))
     stop("! All 'random_effect' must be found in 'model_pars'")
   
+  fixed_effect <- model_pars[-which(model_pars %in% random_effect)]
   
   #### sample ------------------------------------------------------------------
   
@@ -174,6 +175,7 @@ run_power_analysis <- function(
   simdat_list <- lapply(1:length(model_para_vals), function(i) 
     simdat <- simulate_data(template_dat = expanded_datlist[[i]],
                             model_params = model_para_vals[[i]],
+                            fixed_effect = fixed_effect,
                             tslope = effect.size,
                             nsim = nsim,
                             model_pars = model_pars)
@@ -197,7 +199,6 @@ run_power_analysis <- function(
   #Power analysis
   ########################################################################
   
-  fixed_effect = model_pars[-which(model_pars %in% random_effect)]
   
   message("! Starting power analysis")
   
