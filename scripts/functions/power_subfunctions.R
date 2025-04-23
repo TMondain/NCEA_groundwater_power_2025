@@ -1,6 +1,20 @@
 
 
-# Get model parameter estimates
+#' Extract Model Parameter Estimates for Power Analysis
+#'
+#' Fits a GLMM with Gamma family to estimate parameters from a dataset and extract variance components.
+#'
+#' @param dat A data frame containing the input data.
+#' @param response A string specifying the response variable name.
+#' @param model_covs A character vector of covariate names to be modelled. These are fit as random effects.
+#'
+#' @return A named vector of estimated parameters: intercept value, standard error, random effect standard deviations, and residual variance.
+#' @export
+#'
+#' @import glmmTMB
+#'
+#' @examples
+#' # get_model_pars(dat = your_data, response = "response", model_covs = c("site", "year"))
 get_model_pars <- function(dat, # the dataset
                            response, # response variable
                            model_covs) { # the model covariates
@@ -48,7 +62,22 @@ get_model_pars <- function(dat, # the dataset
 
 
 
-# create simulation dataframe
+#' Create Simulated Sampling Data Frame
+#'
+#' Generates a simulated data frame representing a sampling design across sites, years, and days.
+#'
+#' @param samfreq Integer. Between-year sample frequency. Defaults to 1. 
+#' @param nosite.yr Integer. Number of sites sampled per year.
+#' @param noyear Integer. Number of years in the simulation.
+#' @param site_column Character. Name of the site column.
+#' @param yearly_samfreq Integer. Within-year sampling frequency.
+#' @param yearly_samfreq_column Character. Column name for the within-year sampling variable (e.g. "days" or "months"). Defaults to `"days"`.
+#'
+#' @return A data frame representing simulated site-year-day sampling.
+#' @export
+#'
+#' @examples
+#' # create_sim_df(samfreq = 2, nosite.yr = 5, noyear = 10, yearly_samfreq = 30)
 create_sim_df <- function(samfreq = 1, # between-year sample frequency
                           nosite.yr, 
                           noyear,
@@ -102,7 +131,21 @@ create_sim_df <- function(samfreq = 1, # between-year sample frequency
 
 
 
-# alter proportion of data
+#' Alter Proportions of Sampled Data
+#'
+#' Adjusts the proportion of data used from multiple datasets based on target sampling proportions.
+#'
+#' @param dats_list A list of datasets to subsample from.
+#' @param data_proportions Numeric vector of proportions to sample from each dataset. Must be same length as dats_list.
+#' @param template_data Data frame providing the full set of possible sites. Normally the output of the `create_sim_df` function.
+#' @param site_column Character. Name of the site column.
+#' @param nosite.yr Integer. Number of sites per year.
+#'
+#' @return A list of subsampled data frames based on the specified proportions.
+#' @export
+#'
+#' @examples
+#' # alter_dat_proportions(list(dat1, dat2), c(0.7, 0.3), full_data, "site", 10)
 alter_dat_proportions <- function(dats_list,
                                   data_proportions,
                                   template_data,
@@ -139,7 +182,21 @@ alter_dat_proportions <- function(dats_list,
 
 
 
-#### simulate data according to templates
+#' Simulate Data from Template and Model Parameters
+#'
+#' Uses a sampling template and parameter values to generate simulated data under a Gamma GLMM framework. Currently only adds trends to `year` parameter. 
+#'
+#' @param template_dat Data frame template for simulation. Either the output of the `create_sim_df` function or `alter_dat_proportions`
+#' @param model_params Named vector of parameter values from `get_model_pars`.
+#' @param tslope Numeric. The effect size to simulate. Adds trend to `year` parameter.
+#' @param nsim Integer. Number of simulations to run. Defaults to 100.
+#' @param model_pars Character vector of model covariates.
+#'
+#' @return A list of simulated data frames, each including simulated response values.
+#' @export
+#'
+#' @examples
+#' # simulate_data(template, params, tslope = -0.2, nsim = 100, model_pars = c("site", "year"))
 simulate_data <- function(template_dat,
                           model_params,
                           tslope,
@@ -236,7 +293,21 @@ simulate_data <- function(template_dat,
 
 
 
-# run the power analysis
+#' Run Power Analysis on Simulated Data
+#'
+#' Fits GLMMs to a list of simulated datasets and calculates statistical power for detecting fixed effects.
+#'
+#' @param simulated_data A list of data frames from `simulate_data`.
+#' @param nsim Integer. Number of simulations.
+#' @param random_effect Character vector of random effect variable names.
+#' @param fixed_effect Character vector of fixed effect variable names.
+#' @param effect.size Numeric vector of true effect sizes corresponding to the fixed effects.
+#'
+#' @return A data frame with estimated statistical power (%) for each fixed effect.
+#' @export
+#'
+#' @examples
+#' # run_power(simulated_data, nsim = 100, random_effect = c("site", "year"), fixed_effect = "year", effect.size = -0.2)
 run_power <- function(simulated_data, # a list of dataframes, one for each simulation
                       nsim, 
                       random_effect, 
@@ -271,15 +342,6 @@ run_power <- function(simulated_data, # a list of dataframes, one for each simul
     #extracting coefficients and their p-values 
     coef.mod0 <- coef(summary(mod0))$cond
     
-    
-    # ## this is only written for one fixed effect!!!!!
-    # pvalyr0[[ii]] <- coef.mod0[rownames(coef.mod0)=="year",colnames(coef.mod0)=="Pr(>|z|)"]
-    # 
-    # sign.ts[[ii]] <- sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)=="year",
-    #                                                    colnames(coef.mod0)=="Estimate"])
-    # 
-    # fixed_effect
-    
     # get pvalues for >1 fixed effect
     p_vals <- lapply(fixed_effect, function(x) {
       coef.mod0[rownames(coef.mod0)==x,colnames(coef.mod0)=="Pr(>|z|)"]
@@ -307,8 +369,6 @@ run_power <- function(simulated_data, # a list of dataframes, one for each simul
   
   fpower <- do.call(cbind.data.frame, power_outs_fe)  
   colnames(fpower) <- paste0(fixed_effect, "_fpower")
-
-  # fpower0 <- length(which(pvalyr0<0.05 & !is.na(pvalyr0) & sign.ts))*100/length(sort(pvalyr0))
   
   return(fpower)
   
