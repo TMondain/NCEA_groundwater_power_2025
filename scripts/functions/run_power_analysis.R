@@ -48,7 +48,6 @@ run_power_analysis <- function(
     save_loc) {
   
   
-  require(readxl)
   require(extraDistr)
   require(EnvStats)
   require(glmmTMB)
