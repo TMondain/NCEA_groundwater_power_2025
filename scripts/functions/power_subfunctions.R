@@ -375,8 +375,9 @@ run_power <- function(simulated_data, # a list of dataframes, one for each simul
     })
     
     # get sign for >1 fixed effect
-    signs <- lapply(fixed_effect, function(x) {
-      sign(effect.size)==sign(coef.mod0[rownames(coef.mod0)==x,
+    ## need to change this to work with two effect sizes 
+    signs <- lapply(1:length(fixed_effect), function(x) {
+      sign(effect.size)[x]==sign(coef.mod0[rownames(coef.mod0)==fixed_effect[x],
                                         colnames(coef.mod0)=="Estimate"])
     })
     

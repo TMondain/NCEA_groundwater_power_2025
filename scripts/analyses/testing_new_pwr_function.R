@@ -66,7 +66,7 @@ pwr <- run_power_analysis(
   yearly_samfreq = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
   yearly_samfreq_column = "month",
   response_var = "perc_chg_ind",
-  effect.size = c(0.02, 0.05),
+  effect.size = c(0.00001, 0.05),
   nsim = 10,
   samfreq = 1,
   nosite.yr = 100, # number of sites sampled per year across all datasets

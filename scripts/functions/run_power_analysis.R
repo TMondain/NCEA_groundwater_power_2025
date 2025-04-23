@@ -35,7 +35,8 @@ run_power_analysis <- function(
     sample_column = NULL,
     site_column,
     model_pars,
-    random_effect,
+    fixed_effect = NULL, 
+    random_effect = NULL,
     yearly_samfreq,# number of sampling occasions per year, 1 if annual, 12 if monthly
     yearly_samfreq_column = "days",
     response_var,
@@ -69,15 +70,24 @@ run_power_analysis <- function(
     stop("! 'datasets' must be of class 'character', 'list' or 'data.frame'")
   }
   
+  if(is.null(fixed_effect) & is.null(random_effect))
+    stop(message("!! one of `fixed_effect` or `random_effect` must be specified"))
+  
   # sort out parameters
   if(any(grepl(";", model_pars)))
     model_pars <- strsplit(model_pars, ";")[[1]]
   
-  if(any(grepl(";", random_effect)))
+  if(!is.null(fixed_effect) & any(grepl(";", fixed_effect)))
+    fixed_effect <- strsplit(fixed_effect, ";")[[1]]
+  
+  if(!is.null(random_effect) & any(grepl(";", random_effect)))
     random_effect <- strsplit(random_effect, ";")[[1]]
   
   if(any(grepl(";", data_proportions)))
     data_proportions <- as.numeric(strsplit(data_proportions, ";")[[1]])
+  
+  if(any(grepl(";", effect.size)))
+    effect.size <- as.numeric(strsplit(effect.size, ";")[[1]])
   
   # convert these to as.character
   if(!is.null(sample_column))
@@ -88,11 +98,17 @@ run_power_analysis <- function(
   
   response_var <- as.character(response_var)
   
+  if(!is.null(fixed_effect) & any(!fixed_effect %in% model_pars))
+    stop("! All `fixed_effect` must be found in `model_pars`")
   
-  if(any(!random_effect %in% model_pars))
-    stop("! All 'random_effect' must be found in 'model_pars'")
+  if(!is.null(random_effect) & any(!random_effect %in% model_pars))
+    stop("! All `random_effect` must be found in `model_pars`")
   
-  fixed_effect <- model_pars[-which(model_pars %in% random_effect)]
+  if(is.null(fixed_effect))
+    fixed_effect <- model_pars[-which(model_pars %in% random_effect)]
+  
+  if(is.null(random_effect))
+    random_effect <- model_pars[-which(model_pars %in% fixed_effect)]
   
   #### sample ------------------------------------------------------------------
   
@@ -167,6 +183,9 @@ run_power_analysis <- function(
     
   }
   
+  
+  
+  
   #### simulation ----------------------------------------------------------------
   
   message("! Starting data simulations")
@@ -203,18 +222,20 @@ run_power_analysis <- function(
   message("! Starting power analysis")
   
   fpower0 <- run_power(simulated_data = comb_dat, 
-                       nsim = nsim, 
+                       nsim = nsim,  
+                       fixed_effect = fixed_effect,
                        random_effect = random_effect, 
-                       fixed_effect = fixed_effect, 
                        effect.size = effect.size)
   
   message("! finished power analysis")
   
   outs <- data.frame(response_var,
                      sample_column = ifelse(!is.null(sample_column), sample_column, NA),
-                     model_pars = paste(model_pars, collapse = "_"),
-                     random_effect = paste(model_pars, collapse = "_"),
-                     nsim, nosite.yr, noyear, effect.size, 
+                     fixed_effect = paste(fixed_effect, collapse = "_"),
+                     # model_pars = paste(model_pars, collapse = "_"),
+                     random_effect = paste(random_effect, collapse = "_"),
+                     nsim, nosite.yr, noyear, 
+                     effect.size = paste(effect.size, collapse = "_"), 
                      yearly_samfreq, samfreq, data_proportions = paste(data_proportions, collapse = "_"),  
                      fpower0)
   
