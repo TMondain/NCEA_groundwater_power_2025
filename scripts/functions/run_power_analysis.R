@@ -7,6 +7,7 @@
 #' @param sample_column Character. Name of a column used to subset datasets before simulation (optional; default is `NULL`).
 #' @param site_column Character. Name of the column identifying unique sites.
 #' @param model_pars Character vector or semicolon-separated string. Variables to include as predictors in the model.
+#' @param fixed_effect Character vector or semicolon-separated string. Subset of `model_pars` that are to be treated as random effects. One of `fixed_effect` or `random_effect` must be specified.
 #' @param random_effect Character vector or semicolon-separated string. Subset of `model_pars` that are to be treated as random effects.
 #' @param yearly_samfreq Integer. Number of sampling occasions per year (e.g., 1 for annual, 12 for monthly; no default).
 #' @param yearly_samfreq_column Character. Name of the column representing sampling frequency (default is `"days"`).

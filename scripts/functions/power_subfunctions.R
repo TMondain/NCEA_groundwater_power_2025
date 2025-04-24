@@ -275,18 +275,8 @@ simulate_data <- function(template_dat,
     
     #expected mean (mu)
     # if doing multiple fixed effects, would each effect be additive??
-    # i.e. would this work?
-    # fixed_effect <- model_pars[!model_pars %in% random_effect]
-    
-    # if(length(tslope) == 1) {
-    #   # NEED TO CHANGE THIS SO THAT you can specify a slope for any of the fixed effects and
-    #   # for all of them.
-    #   # I.e. if you want to specify trend for month but not year...
-    #   
-    #   message("!! Only one effect size specified,")
-    #   
-    # }
-    
+    # i.e. would this new code work? Does it make sense?
+   
     if(length(tslope) != length(fixed_effect)) {
       stop(paste("!! length of `effect_size` does not equal number of fixed effects"))
     }
