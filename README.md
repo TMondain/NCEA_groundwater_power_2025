@@ -40,14 +40,10 @@ The steps behind the function
 8. Returns (and optionally saves) a summary data frame of the power analysis results.
 
 
-#### Parameters explained
 
----
-title: "Parameter Description for `run_power_analysis` Function"
-output: html_document
----
+### Parameter descriptions for `run_power_analysis`
 
-### Parameter Descriptions for `run_power_analysis`
+Below are the explanations for each of the parameters that can be set for the `run_power_analysis` function.
 
 `datasets`  
 Accepts:
@@ -105,7 +101,7 @@ A numeric vector (or semicolon-separated string) representing the true effect si
 
 #### examples
 
-one dataset
+Below we run the power analysis function for one dataset and one fixed effect - `year`.
 
 ```{r}
 
@@ -128,7 +124,7 @@ pwr <- run_power_analysis(
 
 ```
 
-two datasets
+Below we run the power analysis function for two datasets and one fixed effect - `year`.
 
 ```{r}
 
@@ -152,6 +148,33 @@ pwr <- run_power_analysis(
 
 ```
 
+Below we run the power analysis function for two datasets and two fixed effects - `month` and `year`. Each fixed effect also has a different `effect.size` over time.
+
+```{r}
+
+# with > 1 dataset
+pwr <- run_power_analysis(
+  datasets = paste("data/processed/dip_data_mn_5yrperc_change.csv", 
+                   "data/processed/site_data_mn_5yrperc_change.csv", sep = ";"), # one or more datasets
+  sample_column = "sampled_20",
+  site_column = "sampling_point",
+  model_pars = c("month", "year", "sampling_point"), # all of the model parameters
+  random_effect = c("sampling_point"), # which of model_pars are random effects
+  yearly_samfreq = 12,# number of sampling occasions per year, 1 if annual, 12 if monthly
+  yearly_samfreq_column = "month",
+  response_var = "perc_chg_ind",
+  effect.size = c(0.01, 0.05),
+  nsim = 10,
+  samfreq = 1,
+  nosite.yr = 100, # number of sites sampled per year across all datasets
+  noyear = 5,
+  data_proportions = c(0.8, 0.2), # doesn't have to add up to 1
+  save_loc = NULL)
+
+pwr
+
+
+```
 
 two fixed effects and two effect sizes
 
