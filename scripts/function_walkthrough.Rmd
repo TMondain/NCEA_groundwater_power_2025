@@ -60,11 +60,10 @@ A character string naming the column that identifies unique sampling sites.
 A character vector or semicolon-separated string listing all variables (covariates) to include in the model.
 
 `fixed_effect`  
-A character vector or semicolon-separated string specifying which of the model parameters should be treated as *fixed effects*. Must be a subset of `model_pars`. One of `fixed_effect` or `random_effect` is required.
+A character vector or semicolon-separated string specifying which of the model parameters should be treated as *fixed effects*. Must be a subset of `model_pars`. This column must be of class `numeric`. One of `fixed_effect` or `random_effect` is required.
 
 `random_effect`  
-Same as above, but for *random effects*. Also must be a subset of `model_pars`.  
-One of `fixed_effect` or `random_effect` is required.
+Same as above, but for *random effects*. Also must be a subset of `model_pars`. This column must be of class `numeric`. One of `fixed_effect` or `random_effect` is required.
 
 `yearly_samfreq`  
 `Integer` Number of times each site is sampled per year (e.g., 12 for monthly, 1 for annual).
