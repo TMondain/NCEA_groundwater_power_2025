@@ -276,7 +276,7 @@ simulate_data <- function(template_dat,
     #expected mean (mu)
     # if doing multiple fixed effects, would each effect be additive??
     # i.e. would this new code work? Does it make sense?
-   
+    
     if(length(tslope) != length(fixed_effect)) {
       stop(paste("!! length of `effect_size` does not equal number of fixed effects"))
     }
@@ -331,13 +331,8 @@ run_power <- function(simulated_data, # a list of dataframes, one for each simul
                       fixed_effect, 
                       effect.size) {
   
-  #results will be stored here
-  #figure out how to extract parameters for multiple fixed effects
-  pvalyr0 <- sign.ts <- rep(NA,nsim)
-  
+  # results will be stored here
   is_signif <- list()
-  
-  fpower0 <- rep(NA,nsim)
   
   #results will be stored here
   for(ii in 1:nsim) {
@@ -368,7 +363,7 @@ run_power <- function(simulated_data, # a list of dataframes, one for each simul
     ## need to change this to work with two effect sizes 
     signs <- lapply(1:length(fixed_effect), function(x) {
       sign(effect.size)[x]==sign(coef.mod0[rownames(coef.mod0)==fixed_effect[x],
-                                        colnames(coef.mod0)=="Estimate"])
+                                           colnames(coef.mod0)=="Estimate"])
     })
     
     #is signif?
