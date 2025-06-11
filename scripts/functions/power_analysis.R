@@ -2,9 +2,6 @@
 ########################################################################
 #loop over the number of scenarios
 ########################################################################
-#for (ss in 1:length(scenarios[,1])){
-# for (ss in 1:12)
-# should it be scenarios_location or the scenario? Probably should feed each one separately.
 
 power_analysis <- function(data_location, response_var, nsim,
                            noyear, nosite.yr, samfreq, effect.size, days,
@@ -31,7 +28,7 @@ power_analysis <- function(data_location, response_var, nsim,
   
   if(!is.null(sample_column))
     dat <- dat[dat[,sample_column] == 1,]
-    
+  
   
   cols.num <- grep("_value", colnames(dat), value = TRUE)
   dat[cols.num] <- sapply(dat[cols.num],as.numeric)
@@ -48,23 +45,13 @@ power_analysis <- function(data_location, response_var, nsim,
   
   modparam <- glmmTMB(f,data=dat,family=Gamma(link = "log"))
   
-  # #number of years
-  # noyear <- scenarios$noyear[ss]
-  
-  # #number of sites per year
-  # nosite.yr <- scenarios$nosite[ss] 
-  
-  # #frequency of sampling the same unit across years
-  # samfreq <- scenarios$freq[ss]
-  
-  # effect.size <- scenarios$eff[ss]
   
   ########################################################################
   # Starting simulations for this scenario
   ########################################################################
   #results will be stored here
   pval0 <- LR0 <- LR0_anova <- sign.ts <- rep(NA,nsim)
-  #results will be stored here
+  
   
   #effect.size 
   #note: here I tested whether there is a difference when simulating positive or negative effect sizes,  
@@ -106,9 +93,6 @@ power_analysis <- function(data_location, response_var, nsim,
       year <- data0$year[zz]
       site_yr <- data0$site.yr[zz]
       
-      # #the number of days for this site-year
-      # days <- scenarios$days[ss]
-      
       #unique days from the available days in a year
       unique_days <- 1:days
       
@@ -138,15 +122,12 @@ power_analysis <- function(data_location, response_var, nsim,
     ########################################################################
     # generating parameters
     ########################################################################
-    intval = data.frame(summary(modparam)$coefficients$cond)$Estimate #0.878
-    intsd = data.frame(summary(modparam)$coefficients$cond)$Std..Error #0.026
-    stsd = attr(summary(modparam)$varcor$cond$sampling_point, "stddev", exact = TRUE) #1.58
-    yrsd = attr(summary(modparam)$varcor$cond$year, "stddev", exact = TRUE) #0.031
+    intval = data.frame(summary(modparam)$coefficients$cond)$Estimate
+    intsd = data.frame(summary(modparam)$coefficients$cond)$Std..Error
+    stsd = attr(summary(modparam)$varcor$cond$sampling_point, "stddev", exact = TRUE)
+    yrsd = attr(summary(modparam)$varcor$cond$year, "stddev", exact = TRUE)
     
-    # summary(modparam)$coefficients$cond
-    # summary(modparam)$varcor$cond$year
-    # attr(summary(modparam)$varcor$cond$sampling_point, "stddev", exact = TRUE)
-    
+    # simulate initial intercept
     sim.int <- rtnorm(1, mean=intval, 
                       sd=intsd)
     
@@ -173,7 +154,7 @@ power_analysis <- function(data_location, response_var, nsim,
     ########################################################################
     
     #sigma2
-    g.s2 <- summary(modparam)$sigma^2 #0.121
+    g.s2 <- summary(modparam)$sigma^2
     
     #expected mean (mu)
     expanded_data$mu <- exp(expanded_data$int + tslope * expanded_data$year)
@@ -207,8 +188,7 @@ power_analysis <- function(data_location, response_var, nsim,
     
     
     rm(mod0)#to ensure that convergence issues do not result in the same results being repeated
-    # rm(mod_comp0)
-    
+
   }
   
   
@@ -225,8 +205,8 @@ power_analysis <- function(data_location, response_var, nsim,
     dir.create(save_loc, recursive = TRUE)
     write.csv(outs, 
               file = paste0(save_loc, "/", 
-                           paste(response_var, nsim, nosite.yr, noyear, effect.size, 
-                                 days, samfreq, collapse = "_"), ".csv"))
+                            paste(response_var, nsim, nosite.yr, noyear, effect.size, 
+                                  days, samfreq, collapse = "_"), ".csv"))
     
   }
   
